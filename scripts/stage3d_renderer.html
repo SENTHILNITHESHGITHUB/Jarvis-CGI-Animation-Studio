@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>J.A.R.V.I.S. 3DCG YouTube Cinema Engine</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1280px; height: 720px; overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; }
+    #viewport { position: relative; width: 1280px; height: 720px; }
+    canvas { position: absolute; top: 0; left: 0; width: 1280px; height: 720px; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="viewport">
+    <canvas id="glCanvas" width="1280" height="720"></canvas>
+    <canvas id="outCanvas" width="1280" height="720"></canvas>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+    const W = 1280, H = 720;
+    const glCanvas = document.getElementById('glCanvas');
+    const outCanvas = document.getElementById('outCanvas');
+    const ctx = outCanvas.getContext('2d');
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas: glCanvas,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setSize(W, H, false);
+    renderer.setPixelRatio(1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.18;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x64bfff);
+    scene.fog = new THREE.FogExp2(0x9be0ff, 0.010);
+    window.scene = scene;
+
+    const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 220);
+
+    // 3D Cinema Lighting (Golden-Hour / Sunny Anime PBR Rig)
+    const hemiLight = new THREE.HemisphereLight(0xe4f5ff, 0x9c8a70, 1.45);
+    hemiLight.position.set(0, 35, 0);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff5e0, 2.55);
+    sunLight.position.set(14, 25, 18);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 70;
+    const d = 16;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x88dcff, 0.95);
+    rimLight.position.set(-14, 10, -12);
+    scene.add(rimLight);
+
+    // 3D Volumetric Fluffy Clouds in Sky
+    const cloudsGroup = new THREE.Group();
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0.0 });
+    for (let i = 0; i < 16; i++) {
+      const cg = new THREE.Group();
+      for (let j = 0; j < 4; j++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(1.5 + (j % 2) * 0.7, 16, 16), cloudMat);
+        puff.position.set((j - 1.5) * 1.25, (j % 2) * 0.45, (j % 3) * 0.35);
+        puff.scale.set(1.45, 0.75, 1.0);
+        cg.add(puff);
+      }
+      cg.position.set(-32 + i * 5.2, 9.5 + (i % 3) * 2.2, -16 - (i % 4) * 5);
+      cloudsGroup.add(cg);
+    }
+    scene.add(cloudsGroup);
+
+    // 3D Pink Anywhere Door (Dokodemo Door)
+    const anywhereDoor = new THREE.Group();
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0xff529a, roughness: 0.32, metalness: 0.08 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0xff78b4, roughness: 0.38, metalness: 0.05 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffdf38, emissive: 0x553a00, roughness: 0.25, metalness: 0.25 });
+    const portalMat = new THREE.MeshBasicMaterial({ color: 0x38f6ff, side: THREE.DoubleSide });
+
+    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.98, 0.14), frameMat);
+    postL.position.set(-0.52, 0.99, 0);
+    const postR = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.98, 0.14), frameMat);
+    postR.position.set(0.52, 0.99, 0);
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.15, 0.18), frameMat);
+    lintel.position.set(0, 1.98, 0);
+    const portalPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.94, 1.90), portalMat);
+    portalPlane.position.set(0, 0.96, -0.01);
+
+    const doorHinge = new THREE.Group();
+    doorHinge.position.set(-0.46, 0, 0.02);
+    const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.90, 0.06), leafMat);
+    doorLeaf.position.set(0.46, 0.95, 0);
+    const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), goldMat);
+    doorKnob.position.set(0.80, 0.92, 0.05);
+    doorHinge.add(doorLeaf, doorKnob);
+    doorHinge.rotation.y = -0.95;
+
+    anywhereDoor.add(postL, postR, lintel, portalPlane, doorHinge);
+    anywhereDoor.position.set(0.05, 0.0, 5.88);
+    scene.add(anywhereDoor);
+
+    function createBambooCopter3D() {
+      const copter = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), goldMat);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.13, 12), goldMat);
+      shaft.position.y = 0.065;
+      const rotor = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.014, 0.046), goldMat);
+      rotor.position.y = 0.13;
+      copter.add(base, shaft, rotor);
+      copter.userData.rotor = rotor;
+      return copter;
+    }
+
+    // Separate a combined Shin-chan + Shiro geometry by Z coordinate and strip bottom grass ring
+    function splitGeometryByZ(geom, zThreshold, keepLess, yMinCut = -Infinity) {
+      const pos = geom.attributes.position;
+      const idx = geom.index;
+      if (!idx) return geom.clone();
+      const srcIndices = idx.array;
+      const newIndices = [];
+      for (let i = 0; i < srcIndices.length; i += 3) {
+        const i0 = srcIndices[i], i1 = srcIndices[i + 1], i2 = srcIndices[i + 2];
+        const cy = (pos.getY(i0) + pos.getY(i1) + pos.getY(i2)) / 3.0;
+        if (cy < yMinCut) continue;
+        const cz = (pos.getZ(i0) + pos.getZ(i1) + pos.getZ(i2)) / 3.0;
+        if (keepLess ? (cz < zThreshold) : (cz >= zThreshold)) {
+          newIndices.push(i0, i1, i2);
+        }
+      }
+      const out = geom.clone();
+      out.setIndex(newIndices);
+      out.computeBoundingBox();
+      return out;
+    }
+
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+    const loadedModels = {};
+    const mixers = {};
+    const clipsMap = {};
+    const activeActions = {};
+
+    function loadGLB(key, url) {
+      return new Promise((resolve) => {
+        gltfLoader.load(url, (gltf) => {
+          gltf.scene.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
+          loadedModels[key] = gltf.scene;
+          if (gltf.animations && gltf.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(gltf.scene);
+            mixers[key] = mixer;
+            clipsMap[key] = {};
+            gltf.animations.forEach((clip) => {
+              clipsMap[key][clip.name] = clip;
+            });
+          }
+          resolve(gltf.scene);
+        }, undefined, () => resolve(null));
+      });
+    }
+
+    function setCharClip(key, clipName, t) {
+      const mixer = mixers[key];
+      const clips = clipsMap[key];
+      if (!mixer || !clips) return;
+      const targetClip = clips[clipName] || clips['idle'] || Object.values(clips)[0];
+      if (!targetClip) return;
+      if (activeActions[key] !== targetClip.name) {
+        mixer.stopAllAction();
+        const act = mixer.clipAction(targetClip);
+        act.reset().play();
+        activeActions[key] = targetClip.name;
+      }
+      mixer.setTime(t);
+    }
+
+    async function initScene3D() {
+      await Promise.all([
+        loadGLB('env', '/static/anime_renders/models_3d/environment.glb'),
+        loadGLB('nobita_env', '/static/anime_renders/models_3d/nobita_env.glb'),
+        loadGLB('streets', '/static/anime_renders/models_3d/streets.glb'),
+        loadGLB('neighbours', '/static/anime_renders/models_3d/neighbours.glb'),
+        loadGLB('sakura', '/static/anime_renders/models_3d/sakura.glb'),
+        loadGLB('tree', '/static/anime_renders/models_3d/tree.glb'),
+        loadGLB('hedge', '/static/anime_renders/models_3d/hedge.glb'),
+        loadGLB('doraemon', '/static/anime_renders/models_3d/doraemon.glb'),
+        loadGLB('nobita', '/static/anime_renders/models_3d/nobita.glb'),
+        loadGLB('shizuka', '/static/anime_renders/models_3d/shizuka.glb'),
+        loadGLB('jaian', '/static/anime_renders/models_3d/jaian.glb'),
+        loadGLB('suneo', '/static/anime_renders/models_3d/suneo.glb'),
+        loadGLB('shinchan_shiro', '/static/anime_renders/models_3d/shiro.glb'),
+        loadGLB('shinchan_house', '/static/anime_renders/models_3d/shinchan_house.glb'),
+      ]);
+
+      ['env', 'nobita_env', 'streets', 'neighbours'].forEach((k) => {
+        if (loadedModels[k]) scene.add(loadedModels[k]);
+      });
+
+      // Plant 3D Blooming Sakura Cherry Blossom Trees & Green Trees along the neighborhood!
+      if (loadedModels.sakura) {
+        [[-3.2, 0, 5.2, 1.15], [4.6, 0, 5.3, 1.2], [-5.5, 0, 8.5, 1.3]].forEach(([x, y, z, s]) => {
+          const sk = loadedModels.sakura.clone();
+          sk.position.set(x, y, z);
+          sk.scale.setScalar(s);
+          scene.add(sk);
+        });
+      }
+      if (loadedModels.tree) {
+        [[-1.8, 0, 3.8, 1.1], [3.5, 0, 3.6, 1.15]].forEach(([x, y, z, s]) => {
+          const tr = loadedModels.tree.clone();
+          tr.position.set(x, y, z);
+          tr.scale.setScalar(s);
+          scene.add(tr);
+        });
+      }
+
+      // Separate 3D Shin-chan and 3D Shiro into two unobstructed 3D rigs facing the camera!
+      if (loadedModels.shinchan_shiro) {
+        const raw = loadedModels.shinchan_shiro;
+        let mainMesh = null, outlineMesh = null;
+        raw.traverse((o) => {
+          if (o.isMesh) {
+            if (o.name.includes(' shinchan') || o.name.includes('shinchan_')) mainMesh = o;
+            if (o.name.includes('outlinner')) outlineMesh = o;
+          }
+        });
+
+        if (mainMesh) {
+          mainMesh.geometry.computeBoundingBox();
+          const bb = mainMesh.geometry.boundingBox;
+          const zSplit = bb.min.z + (bb.max.z - bb.min.z) * 0.52;
+          const yGrassCut = bb.min.y + (bb.max.y - bb.min.y) * 0.08;
+
+          // 1. 3D Crayon Shin-chan Rig (rear Z half of mesh, no stray grass outline shell)
+          const scGeom = splitGeometryByZ(mainMesh.geometry, zSplit, true, yGrassCut);
+          const scMesh = new THREE.Mesh(scGeom, mainMesh.material);
+          scMesh.castShadow = true;
+          const scGroup = new THREE.Group();
+          scGroup.add(scMesh);
+          const scBox = new THREE.Box3().setFromObject(scMesh);
+          const scSize = new THREE.Vector3();
+          const scCenter = new THREE.Vector3();
+          scBox.getSize(scSize);
+          scBox.getCenter(scCenter);
+          const scScale = 1.05 / Math.max(scSize.y, 0.01);
+          scGroup.children.forEach((c) => {
+            c.scale.setScalar(scScale);
+            c.position.set(-scCenter.x * scScale, -scBox.min.y * scScale, -scCenter.z * scScale);
+          });
+          const scCopter = createBambooCopter3D();
+          scCopter.position.set(0.0, 0.98, 0.02);
+          scGroup.add(scCopter);
+          scGroup.userData.copter = scCopter;
+          scGroup.position.set(0.88, 0.0, 6.72);
+          scene.add(scGroup);
+          loadedModels.shinchan_rig = scGroup;
+
+          // 2. 3D Shiro Puppy Rig (front Z half of mesh, rotated 180 deg to face camera!)
+          const shGeom = splitGeometryByZ(mainMesh.geometry, zSplit, false, yGrassCut);
+          const shMesh = new THREE.Mesh(shGeom, mainMesh.material);
+          shMesh.castShadow = true;
+          const shGroup = new THREE.Group();
+          shGroup.add(shMesh);
+          const shBox = new THREE.Box3().setFromObject(shMesh);
+          const shSize = new THREE.Vector3();
+          const shCenter = new THREE.Vector3();
+          shBox.getSize(shSize);
+          shBox.getCenter(shCenter);
+          const shScale = 0.48 / Math.max(shSize.y, 0.01);
+          shGroup.children.forEach((c) => {
+            c.scale.setScalar(shScale);
+            c.position.set(-shCenter.x * shScale, -shBox.min.y * shScale, -shCenter.z * shScale);
+          });
+          const shPivot = new THREE.Group();
+          shGroup.rotation.y = Math.PI * 0.85;
+          shPivot.add(shGroup);
+          const shCopter = createBambooCopter3D();
+          shCopter.scale.setScalar(0.68);
+          shCopter.position.set(-0.04, 0.34, 0.02);
+          shPivot.add(shCopter);
+          shPivot.userData.copter = shCopter;
+          shPivot.position.set(1.42, 0.0, 6.92);
+          scene.add(shPivot);
+          loadedModels.shiro_rig = shPivot;
+        }
+      }
+
+      // Add Rigged 3D Doraemon, Nobita, Shizuka, Gian, Suneo
+      const charDefs = [
+        { key: 'doraemon', pos: [2.05, 0.0, 6.65], rotY: -0.22, clip: 'wave', copterY: 1.24 },
+        { key: 'nobita',   pos: [0.18, 0.0, 6.55], rotY: 0.18,  clip: 'wave', copterY: 1.36 },
+        { key: 'shizuka',  pos: [-0.55, 0.0, 6.62], rotY: 0.28, clip: 'stand-happy', copterY: 1.34 },
+        { key: 'jaian',    pos: [-1.32, 0.0, 6.38], rotY: 0.35, clip: 'cheer', copterY: 1.52 },
+        { key: 'suneo',    pos: [2.85, 0.0, 6.48], rotY: -0.35, clip: 'talk', copterY: 1.38 },
+      ];
+
+      charDefs.forEach((cfg) => {
+        const m = loadedModels[cfg.key];
+        if (!m) return;
+        m.position.set(...cfg.pos);
+        m.rotation.y = cfg.rotY;
+        const copter = createBambooCopter3D();
+        copter.position.set(0, cfg.copterY, 0);
+        copter.visible = false;
+        m.add(copter);
+        m.userData.copter = copter;
+        m.userData.basePos = [...cfg.pos];
+        m.userData.baseRotY = cfg.rotY;
+        scene.add(m);
+        setCharClip(cfg.key, cfg.clip, 0.4);
+      });
+
+      window.renderSceneFrame('street_intro', 0.8, 0.25, 0.65, 'shinchan', 'Hey Doraemon! Welcome to our 3D YouTube Crossover!', 'Shin-chan & Doraemon 3D');
+      window.SCENE_READY = true;
+      document.title = 'READY_3D';
+    }
+
+    // Deterministic 3D Frame Director called by Python for 30FPS MP4 rendering
+    window.renderSceneFrame = function(stage, t, progress, lipAmp, speaker, subtitleText, epTitle) {
+      const dora = loadedModels.doraemon;
+      const nobi = loadedModels.nobita;
+      const shiz = loadedModels.shizuka;
+      const jaian = loadedModels.jaian;
+      const suneo = loadedModels.suneo;
+      const shin = loadedModels.shinchan_rig;
+      const shiro = loadedModels.shiro_rig;
+
+      // Spin all visible 3D Bamboo Copter rotors
+      [dora, nobi, shiz, jaian, suneo, shin, shiro].forEach((m) => {
+        if (m && m.userData && m.userData.copter) {
+          m.userData.copter.userData.rotor.rotation.y = t * 28.0;
+        }
+      });
+
+      // Drift 3D clouds
+      cloudsGroup.position.x = -((t * 0.45) % 10.0);
+
+      if (stage === 'tatami_room' || stage === 'street_intro') {
+        // Scene 1: Sweeping 3D Crane Shot to Street Welcome
+        anywhereDoor.visible = false;
+        if (dora) {
+          dora.position.set(1.95, 0.0, 6.65);
+          dora.rotation.y = -0.30;
+          dora.userData.copter.visible = false;
+          setCharClip('doraemon', speaker === 'doraemon' ? 'talk' : 'welcome', t);
+        }
+        if (nobi) {
+          nobi.position.set(0.12, 0.0, 6.55);
+          nobi.rotation.y = 0.22;
+          nobi.userData.copter.visible = false;
+          setCharClip('nobita', 'wave', t);
+        }
+        if (shiz) { shiz.position.set(-0.55, 0.0, 6.60); setCharClip('shizuka', 'stand-happy', t); }
+        if (jaian) { jaian.position.set(-1.35, 0.0, 6.35); setCharClip('jaian', 'laugh', t); }
+        if (suneo) { suneo.position.set(2.85, 0.0, 6.45); setCharClip('suneo', 'idle', t); }
+
+        if (shin) {
+          const walkX = 0.55 + Math.min(1.0, progress * 1.3) * 0.42;
+          const bob = Math.abs(Math.sin(t * 9.5)) * 0.06;
+          shin.position.set(walkX, bob, 6.72);
+          shin.rotation.y = Math.sin(t * 7.0) * 0.14;
+          shin.rotation.z = Math.sin(t * 9.5) * 0.04;
+          const s = 1.0 + (speaker === 'shinchan' ? lipAmp * 0.05 : 0);
+          shin.scale.set(1.0, s, 1.0);
+          shin.userData.copter.visible = false;
+        }
+        if (shiro) {
+          const hop = Math.abs(Math.sin(t * 11.0)) * 0.09;
+          shiro.position.set(1.42, hop, 6.88);
+          shiro.rotation.y = Math.sin(t * 8.0) * 0.18;
+          shiro.userData.copter.visible = false;
+        }
+
+        // Smooth 3D Crane-In Camera
+        const camX = 1.15 + Math.sin(progress * Math.PI) * 0.35;
+        const camY = 2.35 - progress * 0.85;
+        const camZ = 12.2 - progress * 2.2;
+        camera.position.set(camX, camY, camZ);
+        camera.lookAt(1.05, 0.85, 6.6);
+
+      } else if (stage === 'anywhere_portal') {
+        // Scene 2: 3D Anywhere Door Dimensional Portal Opening!
+        anywhereDoor.visible = true;
+        anywhereDoor.position.set(0.85, 0.0, 6.15);
+        doorHinge.rotation.y = -0.15 - Math.min(1.0, progress * 1.35) * 1.35;
+
+        if (dora) {
+          dora.position.set(1.95, 0.0, 6.55);
+          dora.rotation.y = -0.35;
+          dora.userData.copter.visible = true;
+          setCharClip('doraemon', 'cheer', t);
+        }
+        if (nobi) {
+          nobi.position.set(-0.25, 0.0, 6.50);
+          nobi.rotation.y = 0.35;
+          setCharClip('nobita', 'jump', t);
+        }
+        if (shin) {
+          const jump = Math.abs(Math.sin(t * 10.0)) * 0.08;
+          shin.position.set(0.88, jump, 6.55 + progress * 0.35);
+          shin.rotation.y = Math.sin(t * 8.0) * 0.15;
+          shin.userData.copter.visible = false;
+        }
+        if (shiro) {
+          shiro.position.set(1.38, Math.abs(Math.sin(t * 12.0)) * 0.1, 6.82);
+          shiro.userData.copter.visible = false;
+        }
+
+        const angle = (progress - 0.5) * 0.42;
+        camera.position.set(0.95 + Math.sin(angle) * 3.8, 1.45, 6.5 + Math.cos(angle) * 3.8);
+        camera.lookAt(0.95, 0.95, 6.35);
+
+      } else if (stage === 'park_stage') {
+        // Scene 3: 3D Dance & Action Party on the Street!
+        anywhereDoor.visible = true;
+        doorHinge.rotation.y = -1.45;
+
+        if (dora) {
+          dora.position.set(1.88, 0.0, 6.68);
+          dora.rotation.y = -0.15;
+          dora.userData.copter.visible = false;
+          setCharClip('doraemon', speaker === 'doraemon' ? 'talk' : 'house-dancing', t);
+        }
+        if (nobi) {
+          nobi.position.set(0.12, 0.0, 6.62);
+          nobi.rotation.y = 0.15;
+          setCharClip('nobita', 'swing-dancing', t);
+        }
+        if (shiz) { shiz.position.set(-0.62, 0.0, 6.60); setCharClip('shizuka', 'dance', t); }
+        if (jaian) { jaian.position.set(-1.35, 0.0, 6.45); setCharClip('jaian', 'house-dancing', t); }
+        if (suneo) { suneo.position.set(2.75, 0.0, 6.55); setCharClip('suneo', 'dance', t); }
+
+        if (shin) {
+          const danceBob = Math.abs(Math.sin(t * 12.0)) * 0.11;
+          const swayX = Math.sin(t * 6.0) * 0.14;
+          shin.position.set(0.95 + swayX, danceBob, 6.85);
+          shin.rotation.y = Math.sin(t * 9.0) * 0.32;
+          shin.rotation.z = Math.cos(t * 9.0) * 0.08;
+          shin.userData.copter.visible = false;
+        }
+        if (shiro) {
+          shiro.position.set(1.42, Math.abs(Math.sin(t * 13.0)) * 0.12, 7.02);
+          shiro.rotation.y = t * 4.5;
+        }
+
+        // Dynamic 3D Close/Medium Hero Orbit
+        const focusX = speaker === 'doraemon' ? 1.45 : 0.98;
+        const dist = 3.65 + Math.sin(progress * Math.PI) * 0.45;
+        const orbit = Math.sin(t * 0.9) * 0.28;
+        camera.position.set(focusX + Math.sin(orbit) * dist, 1.32, 6.75 + Math.cos(orbit) * dist);
+        camera.lookAt(focusX, 0.85, 6.68);
+
+      } else {
+        // Scene 4 (sky_flight): 3D Bamboo Copter Aerial Flight above the 3D Neighborhood Rooftops!
+        anywhereDoor.visible = false;
+        const flightH = 3.2 + progress * 2.2 + Math.sin(t * 3.0) * 0.25;
+
+        if (dora) {
+          dora.position.set(1.75, flightH + Math.sin(t * 3.5) * 0.18, 6.5);
+          dora.rotation.y = -0.2;
+          dora.userData.copter.visible = true;
+          setCharClip('doraemon', 'victory', t);
+        }
+        if (nobi) {
+          nobi.position.set(0.05, flightH - 0.15 + Math.cos(t * 3.2) * 0.18, 6.4);
+          nobi.rotation.y = 0.2;
+          nobi.userData.copter.visible = true;
+          setCharClip('nobita', 'cheer', t);
+        }
+        if (shin) {
+          shin.position.set(0.90, flightH + 0.1 + Math.cos(t * 4.0) * 0.2, 6.7);
+          shin.rotation.y = Math.sin(t * 4.0) * 0.22;
+          shin.userData.copter.visible = true;
+        }
+        if (shiro) {
+          shiro.position.set(1.35, flightH - 0.1 + Math.sin(t * 4.8) * 0.18, 6.85);
+          shiro.rotation.y = Math.sin(t * 5.0) * 0.25;
+          shiro.userData.copter.visible = true;
+        }
+
+        // Aerial 3D Chase Camera overlooking the 3D Houses & Sakura Trees below
+        const orbit = (progress - 0.5) * 0.55;
+        camera.position.set(0.95 + Math.sin(orbit) * 4.2, flightH + 0.65, 6.6 + Math.cos(orbit) * 4.2);
+        camera.lookAt(0.95, flightH + 0.45, 6.5);
+      }
+
+      renderer.render(scene, camera);
+
+      // Composite 3D WebGL + Crisp YouTube Broadcast Subtitles onto outCanvas
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(glCanvas, 0, 0);
+
+      // Subtle YouTube Cinema Top-Left Watermark Badge
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 14, 28, 0.78)';
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(22, 18, 370, 34, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#00f3ff';
+      ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('J.A.R.V.I.S. 3DCG STUDIO // ' + (speaker || 'ANIME').toUpperCase(), 36, 40);
+
+      // Wrap & Draw Outlined Anime Subtitles at Bottom
+      if (subtitleText) {
+        ctx.font = 'bold 25px "Segoe UI", Arial, sans-serif';
+        const words = subtitleText.split(' ');
+        const lines = [];
+        let curr = [];
+        for (const w of words) {
+          const test = curr.concat([w]).join(' ');
+          if (ctx.measureText(test).width < 1080) {
+            curr.push(w);
+          } else {
+            lines.push(curr.join(' '));
+            curr = [w];
+          }
+        }
+        if (curr.length) lines.push(curr.join(' '));
+
+        const yBase = H - lines.length * 34 - 18;
+        ctx.textAlign = 'center';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#000000';
+        ctx.fillStyle = '#ffee58';
+        lines.slice(0, 3).forEach((ln, idx) => {
+          const y = yBase + idx * 34;
+          ctx.strokeText(ln, W / 2, y);
+          ctx.fillText(ln, W / 2, y);
+        });
+      }
+      ctx.restore();
+
+      return outCanvas.toDataURL('image/jpeg', 0.90);
+    };
+
+    initScene3D();
+  </script>
+</body>
+</html>
