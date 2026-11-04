@@ -1,0 +1,168 @@
+{
+  "model_file": "nobita.glb",
+  "mesh_count": 1,
+  "armature_count": 1,
+  "meshes": [
+    {
+      "name": "nobita",
+      "vertex_count": 8928,
+      "polygon_count": 15586,
+      "edge_count": 24486,
+      "dimensions_m": {
+        "width_x": 0.632,
+        "depth_y": 1.365,
+        "height_z": 0.471
+      },
+      "bounding_box_local": {
+        "min": [
+          -79.312,
+          -0.0,
+          -30.496
+        ],
+        "max": [
+          79.169,
+          189.752,
+          30.5
+        ]
+      },
+      "non_manifold_edge_count": 2214,
+      "boundary_edge_count": 2214,
+      "wire_edge_count": 0,
+      "connected_components": 28,
+      "materials": [
+        {
+          "name": "model",
+          "has_nodes": true,
+          "has_texture": true
+        }
+      ],
+      "missing_materials": false,
+      "armature_modifiers": [
+        {
+          "name": "Armature",
+          "target_armature": "nobita_rig",
+          "preserve_volume": false
+        }
+      ],
+      "dqs_preserve_volume": false,
+      "has_custom_split_normals": true,
+      "shape_keys": []
+    }
+  ],
+  "armatures": [
+    {
+      "name": "nobita_rig",
+      "bone_count": 34,
+      "deform_bones": [
+        "mixamorig:Hips",
+        "mixamorig:LeftUpLeg",
+        "mixamorig:LeftLeg",
+        "mixamorig:LeftFoot",
+        "mixamorig:LeftToeBase",
+        "mixamorig:RightUpLeg",
+        "mixamorig:RightLeg",
+        "mixamorig:RightFoot",
+        "mixamorig:RightToeBase",
+        "mixamorig:Spine",
+        "mixamorig:Spine1",
+        "mixamorig:Spine2",
+        "mixamorig:LeftShoulder",
+        "mixamorig:LeftArm",
+        "mixamorig:LeftForeArm",
+        "mixamorig:LeftHand",
+        "mixamorig:LeftHandIndex1",
+        "mixamorig:LeftHandIndex2",
+        "mixamorig:LeftHandIndex3",
+        "mixamorig:LeftHandThumb1",
+        "mixamorig:LeftHandThumb2",
+        "mixamorig:LeftHandThumb3",
+        "mixamorig:Neck",
+        "mixamorig:Head",
+        "mixamorig:RightShoulder",
+        "mixamorig:RightArm",
+        "mixamorig:RightForeArm",
+        "mixamorig:RightHand",
+        "mixamorig:RightHandIndex1",
+        "mixamorig:RightHandIndex2",
+        "mixamorig:RightHandIndex3",
+        "mixamorig:RightHandThumb1",
+        "mixamorig:RightHandThumb2",
+        "mixamorig:RightHandThumb3"
+      ],
+      "root_bones": [
+        "mixamorig:Hips"
+      ],
+      "has_head": true,
+      "has_hands": true,
+      "has_feet": true,
+      "finger_bones": [
+        "mixamorig:LeftHandIndex1",
+        "mixamorig:LeftHandIndex2",
+        "mixamorig:LeftHandIndex3",
+        "mixamorig:LeftHandThumb1",
+        "mixamorig:LeftHandThumb2",
+        "mixamorig:LeftHandThumb3",
+        "mixamorig:RightHandIndex1",
+        "mixamorig:RightHandIndex2",
+        "mixamorig:RightHandIndex3",
+        "mixamorig:RightHandThumb1",
+        "mixamorig:RightHandThumb2",
+        "mixamorig:RightHandThumb3"
+      ]
+    }
+  ],
+  "proportions": {
+    "overall_height_m": 0.471,
+    "overall_width_m": 0.632,
+    "overall_depth_m": 1.365,
+    "head_bone_length_m": 4.763,
+    "left_arm_length_m": 39.453,
+    "right_arm_length_m": 39.488,
+    "left_leg_length_m": 64.386,
+    "right_leg_length_m": 64.355,
+    "arm_symmetry_diff_m": 0.0353,
+    "leg_symmetry_diff_m": 0.0317
+  },
+  "integrity_alerts": [
+    {
+      "severity": "WARNING",
+      "mesh": "nobita",
+      "issue": "High boundary edge count (2214). Indicates disconnected UV boundary seams prone to cracking when subdivided."
+    },
+    {
+      "severity": "WARNING",
+      "mesh": "nobita",
+      "issue": "Dual Quaternion Skinning (use_deform_preserve_volume) is DISABLED on Armature modifier. Limbs and wrists will collapse/pinch under rotation."
+    },
+    {
+      "severity": "WARNING",
+      "mesh": "nobita",
+      "issue": "Custom split normals detected on game-ripped model. Often causes dark star shading punctures on stylized surfaces."
+    }
+  ],
+  "suggested_corrections": [
+    {
+      "target": "nobita",
+      "action": "WELD_SEAMS",
+      "code": "bpy.ops.mesh.remove_doubles(threshold=0.0005)",
+      "reason": "Welds disconnected seam vertices to eliminate black star-holes and edge separation."
+    },
+    {
+      "target": "nobita",
+      "action": "ENABLE_DQS",
+      "code": "modifier.use_deform_preserve_volume = True",
+      "reason": "Prevents candy-wrapper wrist pinching and preserves limb volume during animation."
+    },
+    {
+      "target": "nobita",
+      "action": "CLEAR_SPLIT_NORMALS",
+      "code": "bpy.ops.mesh.customdata_custom_splitnormals_clear()",
+      "reason": "Cleans shading interpolation and enables smooth cartoon lighting."
+    }
+  ],
+  "baseline_comparison": {
+    "has_baseline": false
+  },
+  "execution_time_seconds": 2.04,
+  "status": "PASS"
+}

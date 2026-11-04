@@ -1,0 +1,167 @@
+{
+  "model_file": "doraemon.glb",
+  "mesh_count": 1,
+  "armature_count": 1,
+  "meshes": [
+    {
+      "name": "doraemon",
+      "vertex_count": 25918,
+      "polygon_count": 34606,
+      "edge_count": 59608,
+      "dimensions_m": {
+        "width_x": 0.765,
+        "depth_y": 1.296,
+        "height_z": 0.767
+      },
+      "bounding_box_local": {
+        "min": [
+          -85.046,
+          0.0,
+          -57.324
+        ],
+        "max": [
+          85.046,
+          189.784,
+          57.576
+        ]
+      },
+      "non_manifold_edge_count": 15398,
+      "boundary_edge_count": 15398,
+      "wire_edge_count": 0,
+      "connected_components": 944,
+      "materials": [
+        {
+          "name": "model",
+          "has_nodes": true,
+          "has_texture": true
+        }
+      ],
+      "missing_materials": false,
+      "armature_modifiers": [
+        {
+          "name": "Armature",
+          "target_armature": "doraemon_rig",
+          "preserve_volume": false
+        }
+      ],
+      "dqs_preserve_volume": false,
+      "has_custom_split_normals": true,
+      "shape_keys": []
+    }
+  ],
+  "armatures": [
+    {
+      "name": "doraemon_rig",
+      "bone_count": 28,
+      "deform_bones": [
+        "mixamorig:Hips",
+        "mixamorig:LeftUpLeg",
+        "mixamorig:LeftLeg",
+        "mixamorig:LeftFoot",
+        "mixamorig:LeftToeBase",
+        "mixamorig:RightUpLeg",
+        "mixamorig:RightLeg",
+        "mixamorig:RightFoot",
+        "mixamorig:RightToeBase",
+        "mixamorig:Spine",
+        "mixamorig:Spine1",
+        "mixamorig:Spine2",
+        "mixamorig:LeftShoulder",
+        "mixamorig:LeftArm",
+        "mixamorig:LeftForeArm",
+        "mixamorig:LeftHand",
+        "mixamorig:LeftHandIndex1",
+        "mixamorig:LeftHandIndex2",
+        "mixamorig:LeftHandIndex3",
+        "mixamorig:Neck",
+        "mixamorig:Head",
+        "mixamorig:RightShoulder",
+        "mixamorig:RightArm",
+        "mixamorig:RightForeArm",
+        "mixamorig:RightHand",
+        "mixamorig:RightHandIndex1",
+        "mixamorig:RightHandIndex2",
+        "mixamorig:RightHandIndex3"
+      ],
+      "root_bones": [
+        "mixamorig:Hips"
+      ],
+      "has_head": true,
+      "has_hands": true,
+      "has_feet": true,
+      "finger_bones": [
+        "mixamorig:LeftHandIndex1",
+        "mixamorig:LeftHandIndex2",
+        "mixamorig:LeftHandIndex3",
+        "mixamorig:RightHandIndex1",
+        "mixamorig:RightHandIndex2",
+        "mixamorig:RightHandIndex3"
+      ]
+    }
+  ],
+  "proportions": {
+    "overall_height_m": 0.767,
+    "overall_width_m": 0.765,
+    "overall_depth_m": 1.296,
+    "head_bone_length_m": 5.842,
+    "left_arm_length_m": 28.439,
+    "right_arm_length_m": 28.434,
+    "left_leg_length_m": 26.613,
+    "right_leg_length_m": 26.564,
+    "arm_symmetry_diff_m": 0.0049,
+    "leg_symmetry_diff_m": 0.0493
+  },
+  "integrity_alerts": [
+    {
+      "severity": "WARNING",
+      "mesh": "doraemon",
+      "issue": "High boundary edge count (15398). Indicates disconnected UV boundary seams prone to cracking when subdivided."
+    },
+    {
+      "severity": "WARNING",
+      "mesh": "doraemon",
+      "issue": "Dual Quaternion Skinning (use_deform_preserve_volume) is DISABLED on Armature modifier. Limbs and wrists will collapse/pinch under rotation."
+    },
+    {
+      "severity": "WARNING",
+      "mesh": "doraemon",
+      "issue": "Custom split normals detected on game-ripped model. Often causes dark star shading punctures on stylized surfaces."
+    },
+    {
+      "severity": "WARNING",
+      "armature": "doraemon_rig",
+      "issue": "Rig contains 6 finger bones, but character has solid spherical mittens. Finger rotations will distort round hand geometry."
+    }
+  ],
+  "suggested_corrections": [
+    {
+      "target": "doraemon",
+      "action": "WELD_SEAMS",
+      "code": "bpy.ops.mesh.remove_doubles(threshold=0.0005)",
+      "reason": "Welds disconnected seam vertices to eliminate black star-holes and edge separation."
+    },
+    {
+      "target": "doraemon",
+      "action": "ENABLE_DQS",
+      "code": "modifier.use_deform_preserve_volume = True",
+      "reason": "Prevents candy-wrapper wrist pinching and preserves limb volume during animation."
+    },
+    {
+      "target": "doraemon",
+      "action": "CLEAR_SPLIT_NORMALS",
+      "code": "bpy.ops.mesh.customdata_custom_splitnormals_clear()",
+      "reason": "Cleans shading interpolation and enables smooth cartoon lighting."
+    },
+    {
+      "target": "doraemon_rig",
+      "action": "UNIFY_HAND_WEIGHTS",
+      "code": "Transfer finger vertex group weights to main mixamorig:LeftHand and mixamorig:RightHand, then remove finger vertex groups.",
+      "reason": "Guarantees pristine, round, uncollapsed white spherical mittens across all animations."
+    }
+  ],
+  "baseline_comparison": {
+    "has_baseline": false
+  },
+  "execution_time_seconds": 2.31,
+  "status": "PASS"
+}
