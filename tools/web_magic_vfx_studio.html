@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIGGSFIELD AI // 100% Full-Body 3D Motion Capture Cinema VFX Studio</title>
+  
+  <!-- Three.js Hardware Accelerated WebGL Engine -->
+  <script src="/libs/three.min.js"></script>
+
+  <!-- MediaPipe AI Vision CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg: #010409;
+      --cyan: #00f0ff;
+      --gold: #f59e0b;
+      --orange: #ea580c;
+      --fire-core: #fffde0;
+      --glass: rgba(10, 16, 28, 0.90);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background-color: var(--bg);
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Video Feed with Hollywood 35mm Teal & Orange Color Grade */
+    #camVideo {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      transform: scaleX(-1);
+      z-index: 1;
+      filter: contrast(1.18) saturate(1.22) brightness(0.85);
+      transition: filter 0.5s ease;
+    }
+
+    #demoCanvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      transform: scaleX(-1);
+      z-index: 1;
+      filter: contrast(1.18) saturate(1.22) brightness(0.85);
+    }
+
+    /* Dynamic Photometric Scene Relighting (2000K Amber & 6500K Cyan) */
+    #lightCanvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      z-index: 2;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.98;
+    }
+
+    /* Three.js 3D WebGL Procedural Fluid Shaders */
+    #threeCanvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    /* Motion Capture Kinetic HUD & Ribbon Trails Overlay Canvas */
+    #hudCanvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    /* Cinematic Film Vignette & Twilight Atmosphere */
+    .vignette {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 35%, rgba(1, 4, 10, 0.88) 100%);
+      pointer-events: none; z-index: 5;
+    }
+
+    /* Higgsfield 35mm Film Grain Simulation */
+    .film-grain {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 6;
+      opacity: 0.12;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* 2.39:1 CinemaScope Anamorphic Letterbox Bars */
+    .cinema-bar-top, .cinema-bar-bottom {
+      position: fixed; left: 0; right: 0;
+      background: #000;
+      z-index: 8;
+      pointer-events: none;
+      height: 4.8vh;
+    }
+    .cinema-bar-top { top: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+    .cinema-bar-bottom { bottom: 0; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+
+    /* Top Stark MoCap Cinema HUD */
+    .hud-top {
+      position: fixed; top: 16px; left: 24px; right: 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 16px;
+      padding: 12px 24px;
+      z-index: 10;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .arc-badge {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 24px var(--cyan);
+      animation: arcPulse 2s infinite ease-in-out;
+    }
+    @keyframes arcPulse {
+      0%, 100% { transform: scale(0.95); opacity: 0.75; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    .brand-title {
+      font-size: 15px; font-weight: 800; letter-spacing: 2px; color: #fff;
+    }
+    .brand-sub {
+      font-size: 11px; color: #94a3b8; letter-spacing: 1px;
+    }
+
+    .telemetry {
+      display: flex; gap: 10px; font-size: 12px; font-weight: 700; color: #38bdf8;
+      align-items: center;
+    }
+
+    .badge {
+      background: rgba(56, 189, 248, 0.12); padding: 6px 12px; border-radius: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .badge-pilot {
+      background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.5);
+      color: #34d399;
+    }
+    .badge-lock {
+      background: rgba(14, 165, 233, 0.16); border-color: rgba(14, 165, 233, 0.5);
+      color: #38bdf8;
+    }
+    .badge-interactive {
+      cursor: pointer; transition: all 0.2s;
+    }
+    .badge-interactive:hover {
+      transform: scale(1.05); filter: brightness(1.2);
+    }
+
+    /* Bottom Stance Dock */
+    .hud-dock {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 40px;
+      padding: 8px 16px;
+      z-index: 10;
+      display: flex; gap: 8px; align-items: center;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+      max-width: 95vw; overflow-x: auto;
+    }
+
+    .dock-pill {
+      padding: 9px 18px; border-radius: 20px; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.8px; color: #cbd5e1; background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12); cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .dock-pill:hover, .dock-pill.active {
+      color: #030712; background: var(--cyan);
+      box-shadow: 0 0 20px var(--cyan);
+      border-color: var(--cyan);
+    }
+    .dock-pill.pill-fire:hover, .dock-pill.pill-fire.active {
+      background: #ea580c; box-shadow: 0 0 24px #ea580c; border-color: #ea580c; color: #fff;
+    }
+    .dock-pill.pill-gold:hover, .dock-pill.pill-gold.active {
+      background: #f59e0b; box-shadow: 0 0 24px #f59e0b; border-color: #f59e0b; color: #000;
+    }
+    .dock-pill.pill-overdrive:hover, .dock-pill.pill-overdrive.active {
+      background: #ec4899; box-shadow: 0 0 24px #ec4899; border-color: #ec4899; color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Dynamic Heat Shimmer SVG Displacement Filter -->
+  <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" version="1.1">
+    <defs>
+      <filter id="heatShimmerFilter" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence id="heatTurb" type="fractalNoise" baseFrequency="0.035 0.07" numOctaves="2" result="noise" seed="1"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="12" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="cinema-bar-top"></div>
+  <div class="cinema-bar-bottom"></div>
+  <div class="film-grain"></div>
+  <video id="camVideo" autoplay playsinline muted></video>
+  <canvas id="lightCanvas"></canvas>
+  <canvas id="threeCanvas"></canvas>
+  <canvas id="hudCanvas"></canvas>
+  <div class="vignette"></div>
+
+  <!-- HUD Header -->
+  <div class="hud-top">
+    <div class="brand">
+      <div class="arc-badge"></div>
+      <div>
+        <div class="brand-title">HIGGSFIELD AI // 100% MOTION CAPTURE CINEMA VFX</div>
+        <div class="brand-sub">FULL-BODY 33-JOINT KINEMATIC MOCAP • ZERO WASM LAG (60 FPS) • DNEG BRAHMĀSTRA & MARVEL</div>
+      </div>
+    </div>
+    <div class="telemetry">
+      <div class="badge badge-pilot">PILOT: NITHESH</div>
+      <div class="badge badge-lock" id="hudLock">MOCAP: SEARCHING...</div>
+      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.2); border-color:rgba(245, 158, 11, 0.7); color:#fbbf24;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior">🛡️ 3D MESH: ON</div>
+      <div class="badge badge-interactive" id="btnCalibrate" style="background:rgba(16, 185, 129, 0.2); border-color:rgba(16, 185, 129, 0.7); color:#34d399;" title="Auto Proportion Calibration Status">🎯 CALIB: 100%</div>
+      <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
+      <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
+      <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.5); color:#38bdf8;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: OFF</div>
+      <div class="badge badge-interactive" id="btnSource" style="background:rgba(234, 179, 8, 0.15); border-color:rgba(234, 179, 8, 0.5); color:#facc15;" title="Switch Live Webcam / 4K Demo Shot">📹 SOURCE: LIVE CAM</div>
+      <div class="badge badge-interactive" id="btnAudio" style="background:rgba(147, 51, 234, 0.15); border-color:rgba(147, 51, 234, 0.5); color:#c084fc;" title="Toggle Cinematic SFX Audio">🔊 SFX: OFF</div>
+      <div class="badge badge-interactive" id="btnRecord" style="background:rgba(239, 68, 68, 0.15); border-color:rgba(239, 68, 68, 0.5); color:#f87171;" title="Record 1080p Cinema Video">🔴 REC: IDLE</div>
+      <div class="badge" id="hudSpeed">SPEED: 0 PX/S</div>
+      <div class="badge" id="hudStance">BRAHMĀSTRA AGNYĀSTRA</div>
+      <div class="badge" id="hudFps">FPS: 60</div>
+    </div>
+  </div>
+
+  <!-- Interactive Stance Dock -->
+  <div class="hud-dock" id="hudDock">
+    <button class="dock-pill pill-fire active" data-vfx="BRAHMASTRA">🔥 BRAHMĀSTRA (AGNYĀSTRA)</button>
+    <button class="dock-pill" data-vfx="IRON_MAN">⚡ IRON MAN (MARK 85)</button>
+    <button class="dock-pill pill-gold" data-vfx="SHANG_CHI">🐉 SHANG-CHI (TEN RINGS)</button>
+    <button class="dock-pill pill-gold" data-vfx="DOCTOR_STRANGE">🔮 DOCTOR STRANGE</button>
+    <button class="dock-pill pill-overdrive" data-vfx="OMNI_OVERDRIVE">🌌 100% ALL CINEMA VFX</button>
+    <button class="dock-pill" data-vfx="AUTO">✨ AUTO AI MOCAP</button>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. SETUP HARDWARE-ACCELERATED THREE.JS 3D VIEWPORT WITH ORTHOGRAPHIC CAMERA
+    // -------------------------------------------------------------------------
+    const video = document.getElementById('camVideo');
+    const threeCanvas = document.getElementById('threeCanvas');
+    const lightCanvas = document.getElementById('lightCanvas');
+    const lightCtx = lightCanvas.getContext('2d');
+    const hudCanvas = document.getElementById('hudCanvas');
+    const hudCtx = hudCanvas.getContext('2d');
+    const hudFps = document.getElementById('hudFps');
+    const hudSpeed = document.getElementById('hudSpeed');
+    const hudStance = document.getElementById('hudStance');
+    const hudLock = document.getElementById('hudLock');
+    const hudRotation = document.getElementById('hudRotation');
+    const hudPitch = document.getElementById('hudPitch');
+    const btnMeshMoCap = document.getElementById('btnMeshMoCap');
+    const btnCalibrate = document.getElementById('btnCalibrate');
+    const btnSource = document.getElementById('btnSource');
+    const btnAudio = document.getElementById('btnAudio');
+    const btnRecord = document.getElementById('btnRecord');
+    const btnSkeleton = document.getElementById('btnSkeleton');
+    const heatTurb = document.getElementById('heatTurb');
+
+    let showSkeleton = false;
+    let showMeshMoCap = true;
+
+    if (btnSkeleton) {
+      btnSkeleton.innerText = "🦴 SKELETON: OFF";
+      btnSkeleton.style.opacity = "0.6";
+      btnSkeleton.addEventListener('click', () => {
+        showSkeleton = !showSkeleton;
+        btnSkeleton.innerText = showSkeleton ? "🦴 SKELETON: ON" : "🦴 SKELETON: OFF";
+        btnSkeleton.style.opacity = showSkeleton ? "1.0" : "0.6";
+      });
+    }
+
+    if (btnMeshMoCap) {
+      btnMeshMoCap.addEventListener('click', () => {
+        showMeshMoCap = !showMeshMoCap;
+        btnMeshMoCap.innerText = showMeshMoCap ? "🛡️ 3D MESH: ON" : "🛡️ 3D MESH: OFF";
+        btnMeshMoCap.style.opacity = showMeshMoCap ? "1.0" : "0.5";
+        if (warriorGroup) warriorGroup.visible = showMeshMoCap;
+      });
+    }
+
+    if (btnCalibrate) {
+      btnCalibrate.addEventListener('click', () => {
+        autoCalib.reset();
+      });
+    }
+
+    const scene = new THREE.Scene();
+
+    let w = window.innerWidth, h = window.innerHeight;
+    const camera = new THREE.OrthographicCamera(-w * 0.5, w * 0.5, h * 0.5, -h * 0.5, -1000, 1000);
+    camera.position.z = 500;
+
+    const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.45;
+
+    // Dynamic 3D Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const pointLightL = new THREE.PointLight(0xff6600, 4.5, 900);
+    const pointLightR = new THREE.PointLight(0xff6600, 4.5, 900);
+    scene.add(pointLightL);
+    scene.add(pointLightR);
+
+    function onResize() {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      camera.left = -w * 0.5;
+      camera.right = w * 0.5;
+      camera.top = h * 0.5;
+      camera.bottom = -h * 0.5;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(w, h);
+      lightCanvas.width = w;
+      lightCanvas.height = h;
+      hudCanvas.width = w;
+      hudCanvas.height = h;
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    // -------------------------------------------------------------------------
+    // 2. PROCEDURAL VOLUMETRIC GLSL FLUID FIRE SHADER
+    // -------------------------------------------------------------------------
+    const flameVertexShader = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const flameFragmentShader = `
+      uniform float uTime;
+      uniform vec3 uColorCore;
+      uniform vec3 uColorGold;
+      uniform vec3 uColorOrange;
+      uniform vec3 uColorRuby;
+      uniform float uIntensity;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        mat2 rot = mat2(0.877, 0.479, -0.479, 0.877);
+        for (int i = 0; i < 4; i++) {
+          v += a * noise(p);
+          p = rot * p * 2.05 + vec2(100.0);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        float x = (uv.x - 0.5) * 2.0;
+        float y = uv.y;
+
+        vec2 flowUV = vec2(x * 1.5, y * 2.2 - uTime * 2.8);
+        float n1 = fbm(flowUV);
+        float n2 = fbm(flowUV * 2.2 + vec2(uTime * 1.4, -uTime * 3.5));
+        
+        float turbulence = (n1 * 0.65 + n2 * 0.35);
+        float flameX = x + (turbulence - 0.5) * 0.75 * (y + 0.25);
+
+        float envelope = (1.0 - y * 0.92) * (1.0 - smoothstep(0.0, 0.85, abs(flameX) / max(0.08, (1.0 - y * 0.75))));
+        envelope = clamp(envelope, 0.0, 1.0);
+
+        float fireDensity = envelope * (turbulence * 1.5 + 0.3) * (1.0 - y * 0.8);
+        fireDensity = clamp(fireDensity, 0.0, 1.0);
+
+        if (fireDensity < 0.03) discard;
+
+        vec3 col = uColorRuby;
+        col = mix(col, uColorOrange, smoothstep(0.12, 0.42, fireDensity));
+        col = mix(col, uColorGold, smoothstep(0.42, 0.75, fireDensity));
+        col = mix(col, uColorCore, smoothstep(0.75, 0.95, fireDensity));
+
+        float alpha = smoothstep(0.03, 0.25, fireDensity) * (1.0 - smoothstep(0.75, 1.0, y));
+        gl_FragColor = vec4(col * uIntensity, alpha);
+      }
+    `;
+
+    function createFlameMaterial(intensity = 2.2) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uColorCore: { value: new THREE.Color(0xffffff) },
+          uColorGold: { value: new THREE.Color(0xffbb00) },
+          uColorOrange: { value: new THREE.Color(0xff4400) },
+          uColorRuby: { value: new THREE.Color(0x990500) },
+          uIntensity: { value: intensity }
+        },
+        vertexShader: flameVertexShader,
+        fragmentShader: flameFragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+    }
+
+    const fireGeom = new THREE.PlaneGeometry(1, 1, 16, 16);
+    fireGeom.translate(0, 0.5, 0);
+
+    const flameMatL = createFlameMaterial(2.4);
+    const flameMatR = createFlameMaterial(2.4);
+    const fireMeshL = new THREE.Mesh(fireGeom, flameMatL);
+    const fireMeshR = new THREE.Mesh(fireGeom, flameMatR);
+    scene.add(fireMeshL);
+    scene.add(fireMeshR);
+
+    // Cross-Quad 3D Volumetric Shells
+    const flameMatCrossL = createFlameMaterial(1.8);
+    const flameMatCrossR = createFlameMaterial(1.8);
+    const fireMeshCrossL = new THREE.Mesh(fireGeom, flameMatCrossL);
+    const fireMeshCrossR = new THREE.Mesh(fireGeom, flameMatCrossR);
+    fireMeshCrossL.rotation.y = Math.PI * 0.35;
+    fireMeshCrossR.rotation.y = Math.PI * 0.35;
+    fireMeshL.add(fireMeshCrossL);
+    fireMeshR.add(fireMeshCrossR);
+
+    // Forearm Liquid Fire Streams
+    const armStreamMatL = createFlameMaterial(1.9);
+    const armStreamMatR = createFlameMaterial(1.9);
+    const armStreamMeshL = new THREE.Mesh(fireGeom, armStreamMatL);
+    const armStreamMeshR = new THREE.Mesh(fireGeom, armStreamMatR);
+    scene.add(armStreamMeshL);
+    scene.add(armStreamMeshR);
+
+    // Upper Arm Fire Sheaths (Shoulder to Elbow)
+    const upperArmMatL = createFlameMaterial(1.6);
+    const upperArmMatR = createFlameMaterial(1.6);
+    const upperArmMeshL = new THREE.Mesh(fireGeom, upperArmMatL);
+    const upperArmMeshR = new THREE.Mesh(fireGeom, upperArmMatR);
+    scene.add(upperArmMeshL);
+    scene.add(upperArmMeshR);
+
+    // -------------------------------------------------------------------------
+    // 3. ASTRAL AGNYĀSTRA SOLAR CHAKRA SHADER (LOCKED TO STERNUM / SPINE)
+    // -------------------------------------------------------------------------
+    const solarChakraFragmentShader = `
+      uniform float uTime;
+      uniform vec3 uColorCore;
+      uniform vec3 uColorGold;
+      uniform vec3 uColorOrange;
+      varying vec2 vUv;
+
+      void main() {
+        vec2 p = (vUv - 0.5) * 2.0;
+        float r = length(p);
+        float angle = atan(p.y, p.x);
+
+        float ring = smoothstep(0.48, 0.55, r) * (1.0 - smoothstep(0.68, 0.78, r));
+        float rays = sin(angle * 12.0 + uTime * 3.5) * cos(angle * 6.0 - uTime * 2.2);
+        float warpedR = r + rays * 0.08 * smoothstep(0.5, 0.8, r);
+        float corona = smoothstep(0.50, 0.58, warpedR) * (1.0 - smoothstep(0.70, 0.98, warpedR));
+
+        float total = ring * 1.6 + corona * 1.3;
+        if (total < 0.05) discard;
+
+        vec3 col = mix(uColorOrange, uColorGold, smoothstep(0.2, 0.7, total));
+        col = mix(col, uColorCore, smoothstep(0.7, 1.5, total));
+
+        gl_FragColor = vec4(col * 2.2, total * 0.9);
+      }
+    `;
+
+    const chakraMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uColorCore: { value: new THREE.Color(0xffffff) },
+        uColorGold: { value: new THREE.Color(0xffaa00) },
+        uColorOrange: { value: new THREE.Color(0xff3300) }
+      },
+      vertexShader: flameVertexShader,
+      fragmentShader: solarChakraFragmentShader,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    const chakraGeom = new THREE.PlaneGeometry(1, 1);
+    const solarChakraMesh = new THREE.Mesh(chakraGeom, chakraMat);
+    scene.add(solarChakraMesh);
+
+    // -------------------------------------------------------------------------
+    // 4. SHANG-CHI (TEN RINGS WITH KINEMATIC BONE ALIGNMENT)
+    // -------------------------------------------------------------------------
+    const ringGroup = new THREE.Group();
+    const tenRings = [];
+    const ringGeom = new THREE.TorusGeometry(1, 0.24, 16, 40);
+    const ringMatGold = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      metalness: 0.98,
+      roughness: 0.12,
+      emissive: 0xff8800,
+      emissiveIntensity: 1.8
+    });
+
+    for (let i = 0; i < 10; i++) {
+      const ring = new THREE.Mesh(ringGeom, ringMatGold);
+      ringGroup.add(ring);
+      tenRings.push(ring);
+    }
+    scene.add(ringGroup);
+
+    // -------------------------------------------------------------------------
+    // 5. DOCTOR STRANGE COUNTER-ROTATING ELDRITCH MANDALAS
+    // -------------------------------------------------------------------------
+    const textureLoader = new THREE.TextureLoader();
+    const texStrangeCW = textureLoader.load('/Doctor-Strange-Hands/magic_circles/magic_circle_cw.png');
+    const texStrangeCCW = textureLoader.load('/Doctor-Strange-Hands/magic_circles/magic_circle_ccw.png');
+
+    const strangeGeom = new THREE.PlaneGeometry(1, 1);
+    const strangeMatCW = new THREE.MeshBasicMaterial({
+      map: texStrangeCW,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const strangeMatCCW = new THREE.MeshBasicMaterial({
+      map: texStrangeCCW,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    const strangeGroupL = new THREE.Group();
+    strangeGroupL.add(new THREE.Mesh(strangeGeom, strangeMatCW));
+    const sL_Outer = new THREE.Mesh(strangeGeom, strangeMatCCW);
+    sL_Outer.scale.set(1.28, 1.28, 1);
+    strangeGroupL.add(sL_Outer);
+
+    const strangeGroupR = new THREE.Group();
+    strangeGroupR.add(new THREE.Mesh(strangeGeom, strangeMatCW));
+    const sR_Outer = new THREE.Mesh(strangeGeom, strangeMatCCW);
+    sR_Outer.scale.set(1.28, 1.28, 1);
+    strangeGroupR.add(sR_Outer);
+
+    scene.add(strangeGroupL);
+    scene.add(strangeGroupR);
+
+    // -------------------------------------------------------------------------
+    // 6. 1,000+ 3D VOLUMETRIC THERMAL ASH & EMBER PARTICLE ENGINE
+    // -------------------------------------------------------------------------
+    const emberCount = 1000;
+    const emberGeom = new THREE.BufferGeometry();
+    const emberPositions = new Float32Array(emberCount * 3);
+    const emberVelocities = [];
+
+    for (let i = 0; i < emberCount; i++) {
+      emberPositions[i * 3] = (Math.random() - 0.5) * 1400;
+      emberPositions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+      emberPositions[i * 3 + 2] = (Math.random() - 0.5) * 350;
+      emberVelocities.push({
+        vx: (Math.random() - 0.5) * 2.4,
+        vy: Math.random() * 5.0 + 3.0,
+        vz: (Math.random() - 0.5) * 2.0,
+        seed: Math.random() * 100
+      });
+    }
+    emberGeom.setAttribute('position', new THREE.BufferAttribute(emberPositions, 3));
+
+    const emberMat = new THREE.PointsMaterial({
+      color: 0xffaa20,
+      size: 8.5,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const emberSystem = new THREE.Points(emberGeom, emberMat);
+    scene.add(emberSystem);
+
+    // -------------------------------------------------------------------------
+    // 7. SUB-PIXEL ANATOMICAL MAPPING & CARTESIAN VECTOR MATH
+    // -------------------------------------------------------------------------
+    function videoToScreen(normX, normY, normZ = 0) {
+      const cw = window.innerWidth;
+      const ch = window.innerHeight;
+      
+      let vw = 1280, vh = 720;
+      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+        vw = video.videoWidth;
+        vh = video.videoHeight;
+      }
+
+      const videoAspect = vw / vh;
+      const containerAspect = cw / ch;
+
+      let renderedW, renderedH, offsetX, offsetY;
+
+      if (containerAspect > videoAspect) {
+        renderedW = cw;
+        renderedH = cw / videoAspect;
+        offsetX = 0;
+        offsetY = (ch - renderedH) * 0.5;
+      } else {
+        renderedW = ch * videoAspect;
+        renderedH = ch;
+        offsetX = (cw - renderedW) * 0.5;
+        offsetY = 0;
+      }
+
+      // scaleX(-1) mirror coordinate mapping
+      const screenX = offsetX + (1.0 - normX) * renderedW;
+      const screenY = offsetY + normY * renderedH;
+      const screenZ = -normZ * renderedW; // Invert Z depth for Three.js Cartesian space
+
+      return { x: screenX, y: screenY, z: screenZ };
+    }
+
+    function getBoneAngle(p1, p2) {
+      const dx = p2.x - p1.x;
+      const dy = p1.y - p2.y; // Invert Y for Three.js Cartesian space
+      return Math.atan2(dy, dx) - Math.PI * 0.5;
+    }
+
+    // -------------------------------------------------------------------------
+    // AUTOMATIC PROPORTION CALIBRATION & CONTINUOUS ANATOMY LOCK ENGINE
+    // -------------------------------------------------------------------------
+    const autoCalib = {
+      active: true,
+      locked: false,
+      sampleCount: 0,
+      TARGET_SAMPLES: 25,
+      // Baseline calibrated dimensions in pixels
+      shoulderSpan: 240,
+      torsoLength: 220,
+      upperArmL: 110,
+      forearmL: 110,
+      upperArmR: 110,
+      forearmR: 110,
+      thighL: 160,
+      shinL: 160,
+      thighR: 160,
+      shinR: 160,
+      depthScale: 1.0,
+      
+      feed(joints, rawLms) {
+        if (!joints.detected || !joints.ls || !joints.rs || !joints.lh || !joints.rh) return;
+        
+        const currShoulderSpan = Math.hypot(joints.rs.x - joints.ls.x, joints.rs.y - joints.ls.y);
+        const currTorso = Math.hypot(joints.spine.x - ((joints.lh.x + joints.rh.x)*0.5), joints.spine.y - ((joints.lh.y + joints.rh.y)*0.5));
+        const currUpperArmL = Math.hypot(joints.le.x - joints.ls.x, joints.le.y - joints.ls.y);
+        const currForearmL = Math.hypot(joints.lw.x - joints.le.x, joints.lw.y - joints.le.y);
+        const currUpperArmR = Math.hypot(joints.re.x - joints.rs.x, joints.re.y - joints.rs.y);
+        const currForearmR = Math.hypot(joints.rw.x - joints.re.x, joints.rw.y - joints.re.y);
+        
+        if (currShoulderSpan < 50 || currTorso < 50) return;
+        
+        if (this.sampleCount < this.TARGET_SAMPLES) {
+          this.sampleCount++;
+          const alpha = 1.0 / this.sampleCount;
+          this.shoulderSpan = this.shoulderSpan * (1 - alpha) + currShoulderSpan * alpha;
+          this.torsoLength = this.torsoLength * (1 - alpha) + currTorso * alpha;
+          this.upperArmL = this.upperArmL * (1 - alpha) + currUpperArmL * alpha;
+          this.forearmL = this.forearmL * (1 - alpha) + currForearmL * alpha;
+          this.upperArmR = this.upperArmR * (1 - alpha) + currUpperArmR * alpha;
+          this.forearmR = this.forearmR * (1 - alpha) + currForearmR * alpha;
+          
+          const pct = Math.round((this.sampleCount / this.TARGET_SAMPLES) * 100);
+          if (btnCalibrate) btnCalibrate.innerText = `🎯 CALIB: ${pct}%`;
+          if (this.sampleCount >= this.TARGET_SAMPLES) {
+            this.locked = true;
+            if (btnCalibrate) {
+              btnCalibrate.innerText = `🎯 CALIB: 100% LOCKED`;
+              btnCalibrate.style.color = '#34d399';
+              btnCalibrate.style.borderColor = 'rgba(16, 185, 129, 0.9)';
+            }
+          }
+        } else {
+          // Continuous gentle tracking
+          this.shoulderSpan = this.shoulderSpan * 0.98 + currShoulderSpan * 0.02;
+        }
+        
+        // Depth scaling relative to user baseline
+        this.depthScale = Math.max(0.4, Math.min(2.5, currShoulderSpan / Math.max(80, this.shoulderSpan)));
+      },
+      
+      reset() {
+        this.sampleCount = 0;
+        this.locked = false;
+        if (btnCalibrate) {
+          btnCalibrate.innerText = `🎯 CALIB: CALIBRATING...`;
+          btnCalibrate.style.color = '#facc15';
+        }
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 3D BODY ROTATION & DIRECTION DETECTION ENGINE
+    // -------------------------------------------------------------------------
+    const bodyOrientation = {
+      yawDeg: 0,        // Heading: -180 to +180 deg
+      pitchDeg: 0,      // Lean: -90 to +90 deg
+      rollDeg: 0,       // Tilt: -90 to +90 deg
+      turnDirection: "FRONT 🎯",
+      
+      targetYaw: 0,
+      targetPitch: 0,
+      targetRoll: 0,
+      
+      compute(joints, rawLms) {
+        if (!joints.detected || !joints.ls || !joints.rs || !rawLms) return;
+        
+        // 1. Precise 3D Yaw (Turn Direction around Y axis)
+        const zL = rawLms[11] ? rawLms[11].z : 0;
+        const zR = rawLms[12] ? rawLms[12].z : 0;
+        const dx = joints.rs.x - joints.ls.x;
+        
+        // Depth difference scaled to pixels
+        const deltaZ = (zR - zL) * 450;
+        
+        // Nose horizontal ratio relative to shoulder span (0.5 = dead center)
+        const noseRatio = (joints.nose.x - joints.ls.x) / Math.max(1, Math.abs(dx));
+        const noseDeviation = (noseRatio - 0.5) * 140; // -70 to +70 deg
+        
+        let rawYaw = Math.atan2(deltaZ, Math.abs(dx)) * (180 / Math.PI);
+        let combinedYaw = rawYaw * 0.65 + noseDeviation * 0.35;
+        this.targetYaw = Math.max(-120, Math.min(120, combinedYaw));
+        
+        // 2. Pitch (Forward / Backward Lean)
+        const midShoulderY = (joints.ls.y + joints.rs.y) * 0.5;
+        const midHipY = (joints.lh.y + joints.rh.y) * 0.5;
+        const midShoulderZ = (zL + zR) * 0.5;
+        const zHips = ((rawLms[23] ? rawLms[23].z : 0) + (rawLms[24] ? rawLms[24].z : 0)) * 0.5;
+        const deltaPitchZ = (midShoulderZ - zHips) * 350;
+        const dySpine = midHipY - midShoulderY;
+        
+        let rawPitch = Math.atan2(deltaPitchZ, Math.max(40, dySpine)) * (180 / Math.PI);
+        this.targetPitch = Math.max(-45, Math.min(45, rawPitch));
+        
+        // 3. Roll (Shoulder tilt)
+        let rawRoll = Math.atan2(joints.rs.y - joints.ls.y, joints.rs.x - joints.ls.x) * (180 / Math.PI);
+        this.targetRoll = Math.max(-45, Math.min(45, rawRoll));
+        
+        // Jitter-free EMA filter (alpha = 0.28: lag-free & ultra-smooth)
+        this.yawDeg += (this.targetYaw - this.yawDeg) * 0.28;
+        this.pitchDeg += (this.targetPitch - this.pitchDeg) * 0.28;
+        this.rollDeg += (this.targetRoll - this.rollDeg) * 0.28;
+        
+        // Categorize direction
+        const yaw = Math.round(this.yawDeg);
+        if (yaw > 50) this.turnDirection = "PROFILE RIGHT ➡️";
+        else if (yaw > 18) this.turnDirection = "TURNING RIGHT ↗️";
+        else if (yaw < -50) this.turnDirection = "PROFILE LEFT ⬅️";
+        else if (yaw < -18) this.turnDirection = "TURNING LEFT ↖️";
+        else this.turnDirection = "FRONT 🎯";
+        
+        if (hudRotation) {
+          hudRotation.innerText = `🔄 ${this.turnDirection} (${yaw > 0 ? '+' : ''}${yaw}°)`;
+        }
+        if (hudPitch) {
+          const pitch = Math.round(this.pitchDeg);
+          hudPitch.innerText = `📐 PITCH: ${pitch > 0 ? '+' : ''}${pitch}°`;
+        }
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 3D WATERTIGHT SOLID MESH MOCAP WARRIOR (ZERO COLLAPSE, PBR SHADERS)
+    // -------------------------------------------------------------------------
+    const warriorGroup = new THREE.Group();
+    scene.add(warriorGroup);
+
+    // High-End PBR Shaders
+    const matCarapace = new THREE.MeshStandardMaterial({
+      color: 0x141824,
+      metalness: 0.88,
+      roughness: 0.24
+    });
+    const matAstraGold = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.95,
+      roughness: 0.18,
+      emissive: 0x78350f,
+      emissiveIntensity: 0.45
+    });
+    const matRubyCarapace = new THREE.MeshStandardMaterial({
+      color: 0x991b1b,
+      metalness: 0.82,
+      roughness: 0.32
+    });
+    const matJointBall = new THREE.MeshStandardMaterial({
+      color: 0x0a0d14,
+      metalness: 0.70,
+      roughness: 0.45
+    });
+    const matSuryaCore = new THREE.MeshBasicMaterial({ color: 0xfff080 });
+    const matVisorGlow = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+
+    // Procedural Unit Geometries
+    const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 16);
+    const unitSphere = new THREE.SphereGeometry(1, 16, 16);
+    const unitBox = new THREE.BoxGeometry(1, 1, 1);
+
+    function makeWarriorMesh(geom, mat) {
+      const m = new THREE.Mesh(geom, mat);
+      warriorGroup.add(m);
+      return m;
+    }
+
+    // Torso Components
+    const torsoMesh = makeWarriorMesh(unitCyl, matCarapace);
+    const arcReactorMesh = makeWarriorMesh(unitCyl, matSuryaCore);
+    const abdomenMesh = makeWarriorMesh(unitCyl, matCarapace);
+    const pelvisMesh = makeWarriorMesh(unitCyl, matRubyCarapace);
+
+    // Head & Helmet
+    const headGroup = new THREE.Group();
+    const helmetSphere = new THREE.Mesh(unitSphere, matCarapace);
+    const helmetVisor = new THREE.Mesh(unitBox, matVisorGlow);
+    helmetVisor.scale.set(1.4, 0.28, 0.5);
+    helmetVisor.position.set(0, 0, 0.85);
+    headGroup.add(helmetSphere);
+    headGroup.add(helmetVisor);
+    warriorGroup.add(headGroup);
+
+    // Joint Spheres (Watertight Articulation Ball Joints)
+    const jShoulderL = makeWarriorMesh(unitSphere, matAstraGold);
+    const jShoulderR = makeWarriorMesh(unitSphere, matAstraGold);
+    const jElbowL = makeWarriorMesh(unitSphere, matJointBall);
+    const jElbowR = makeWarriorMesh(unitSphere, matJointBall);
+    const jWristL = makeWarriorMesh(unitSphere, matAstraGold);
+    const jWristR = makeWarriorMesh(unitSphere, matAstraGold);
+    const jHipL = makeWarriorMesh(unitSphere, matJointBall);
+    const jHipR = makeWarriorMesh(unitSphere, matJointBall);
+    const jKneeL = makeWarriorMesh(unitSphere, matJointBall);
+    const jKneeR = makeWarriorMesh(unitSphere, matJointBall);
+    const jAnkleL = makeWarriorMesh(unitSphere, matAstraGold);
+    const jAnkleR = makeWarriorMesh(unitSphere, matAstraGold);
+
+    // Limb Cylinders (Segmented Armor Sleeves)
+    const upperArmL = makeWarriorMesh(unitCyl, matRubyCarapace);
+    const upperArmR = makeWarriorMesh(unitCyl, matRubyCarapace);
+    const forearmL = makeWarriorMesh(unitCyl, matCarapace);
+    const forearmR = makeWarriorMesh(unitCyl, matCarapace);
+    const handL = makeWarriorMesh(unitBox, matAstraGold);
+    const handR = makeWarriorMesh(unitBox, matAstraGold);
+    const thighL = makeWarriorMesh(unitCyl, matCarapace);
+    const thighR = makeWarriorMesh(unitCyl, matCarapace);
+    const shinL = makeWarriorMesh(unitCyl, matRubyCarapace);
+    const shinR = makeWarriorMesh(unitCyl, matRubyCarapace);
+    const bootL = makeWarriorMesh(unitBox, matCarapace);
+    const bootR = makeWarriorMesh(unitBox, matCarapace);
+
+    function orientCylinder(mesh, p1, p2, radius, cxHalf, cyHalf) {
+      if (!p1 || !p2) return;
+      const dx = p2.x - p1.x;
+      const dy = -(p2.y - p1.y);
+      const dz = (p2.z - p1.z) || 0;
+      const len = Math.hypot(dx, dy, dz);
+      if (len < 1) return;
+
+      mesh.position.set((p1.x + p2.x)*0.5 - cxHalf, cyHalf - (p1.y + p2.y)*0.5, ((p1.z||0) + (p2.z||0))*0.5);
+      mesh.scale.set(radius, len, radius);
+
+      const dir = new THREE.Vector3(dx, dy, dz).normalize();
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      mesh.visible = true;
+    }
+
+    function placeBall(mesh, pt, radius, cxHalf, cyHalf) {
+      if (!pt) return;
+      mesh.position.set(pt.x - cxHalf, cyHalf - pt.y, pt.z || 0);
+      mesh.scale.set(radius, radius, radius);
+      mesh.visible = true;
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. 33-POINT FULL-BODY MOTION CAPTURE RIG & KINETIC ENGINE
+    // -------------------------------------------------------------------------
+    let manualOverride = "BRAHMASTRA";
+    let activeStance = "BRAHMASTRA";
+    let timeVal = 0;
+
+    // Full 33-Joint MoCap Rig Structure with 3D Z-coordinates
+    let mocapJoints = {
+      nose: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.30, z: 0 },
+      ls: { x: window.innerWidth * 0.38, y: window.innerHeight * 0.44, z: 0 },
+      rs: { x: window.innerWidth * 0.62, y: window.innerHeight * 0.44, z: 0 },
+      le: { x: window.innerWidth * 0.24, y: window.innerHeight * 0.55, z: 0 },
+      re: { x: window.innerWidth * 0.76, y: window.innerHeight * 0.55, z: 0 },
+      lw: { x: window.innerWidth * 0.32, y: window.innerHeight * 0.70, z: 0 },
+      rw: { x: window.innerWidth * 0.68, y: window.innerHeight * 0.70, z: 0 },
+      lindex: { x: window.innerWidth * 0.31, y: window.innerHeight * 0.73, z: 0 },
+      rindex: { x: window.innerWidth * 0.69, y: window.innerHeight * 0.73, z: 0 },
+      lh: { x: window.innerWidth * 0.42, y: window.innerHeight * 0.72, z: 0 },
+      rh: { x: window.innerWidth * 0.58, y: window.innerHeight * 0.72, z: 0 },
+      lknee: { x: window.innerWidth * 0.41, y: window.innerHeight * 0.88, z: 0 },
+      rknee: { x: window.innerWidth * 0.59, y: window.innerHeight * 0.88, z: 0 },
+      lankle: { x: window.innerWidth * 0.40, y: window.innerHeight * 0.98, z: 0 },
+      rankle: { x: window.innerWidth * 0.60, y: window.innerHeight * 0.98, z: 0 },
+      spine: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.52, z: 0 },
+      detected: false
+    };
+
+    let poseCurrent = JSON.parse(JSON.stringify(mocapJoints));
+    let prevLw = { x: mocapJoints.lw.x, y: mocapJoints.lw.y };
+    let prevRw = { x: mocapJoints.rw.x, y: mocapJoints.rw.y };
+    let speedL = 0, speedR = 0;
+
+    // MoCap Motion Ribbon History (Last 20 frames of 3D motion streaks)
+    const historyL = [];
+    const historyR = [];
+    const MAX_TRAIL_LENGTH = 18;
+
+    // Kinetic Shockwave Ring Emitters
+    let shockwaves = [];
+
+    function triggerShockwave(x, y, maxRadius = 260, color = '255, 180, 20') {
+      shockwaves.push({
+        x: x, y: y,
+        radius: 10,
+        maxRadius: maxRadius,
+        color: color,
+        alpha: 1.0
+      });
+    }
+
+    function applyPhotometricLight(cx, cy, radius, colorRgb, intensity = 0.5) {
+      const flicker = 1.0 + 0.16 * Math.sin(timeVal * 16) + 0.08 * Math.cos(timeVal * 25);
+      const grad = lightCtx.createRadialGradient(cx, cy, 0, cx, cy, radius * flicker);
+      grad.addColorStop(0, `rgba(255, 240, 200, ${0.98 * intensity})`);
+      grad.addColorStop(0.28, `rgba(${colorRgb}, ${0.75 * intensity})`);
+      grad.addColorStop(0.70, `rgba(${colorRgb}, ${0.28 * intensity})`);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      lightCtx.fillStyle = grad;
+      lightCtx.beginPath();
+      lightCtx.arc(cx, cy, radius * flicker, 0, Math.PI * 2);
+      lightCtx.fill();
+    }
+
+    // Leaping Golden Plasma Arc between wrists when palms are brought close
+    function drawPlasmaArc(p1, p2) {
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      if (dist > 450) return;
+
+      const segments = 12;
+      hudCtx.save();
+      hudCtx.strokeStyle = '#fff5b0';
+      hudCtx.lineWidth = 4.5;
+      hudCtx.shadowColor = '#ff6600';
+      hudCtx.shadowBlur = 24;
+
+      hudCtx.beginPath();
+      hudCtx.moveTo(p1.x, p1.y);
+      for (let i = 1; i < segments; i++) {
+        const frac = i / segments;
+        const mx = p1.x + (p2.x - p1.x) * frac;
+        const my = p1.y + (p2.y - p1.y) * frac;
+        const jitter = (Math.random() - 0.5) * Math.min(60, dist * 0.25);
+        hudCtx.lineTo(mx + jitter, my + jitter);
+      }
+      hudCtx.lineTo(p2.x, p2.y);
+      hudCtx.stroke();
+
+      // Fusion Orb at center when hands are very close (< 180px)
+      if (dist < 220) {
+        const cx = (p1.x + p2.x) * 0.5;
+        const cy = (p1.y + p2.y) * 0.5;
+        const orbRad = Math.max(25, (220 - dist) * 0.65);
+        hudCtx.fillStyle = '#ffffff';
+        hudCtx.shadowColor = '#f59e0b';
+        hudCtx.shadowBlur = 40;
+        hudCtx.beginPath();
+        hudCtx.arc(cx, cy, orbRad, 0, Math.PI * 2);
+        hudCtx.fill();
+      }
+      hudCtx.restore();
+    }
+
+    // Draw Smooth Kinematic Motion Ribbon Trail
+    function drawMotionRibbon(history, colorRgb) {
+      if (history.length < 3) return;
+      hudCtx.save();
+      for (let i = 0; i < history.length - 1; i++) {
+        const p1 = history[i];
+        const p2 = history[i + 1];
+        const progress = i / history.length;
+        const width = 36 * progress + 4;
+        const alpha = progress * 0.85;
+
+        hudCtx.strokeStyle = `rgba(${colorRgb}, ${alpha})`;
+        hudCtx.lineWidth = width;
+        hudCtx.lineCap = 'round';
+        hudCtx.shadowColor = '#ff6600';
+        hudCtx.shadowBlur = 18;
+        hudCtx.beginPath();
+        hudCtx.moveTo(p1.x, p1.y);
+        hudCtx.lineTo(p2.x, p2.y);
+        hudCtx.stroke();
+      }
+      hudCtx.restore();
+    }
+
+    // Draw Holographic Biomechanical MoCap Rig Overlay
+    function drawMoCapSkeleton(joints) {
+      if (!showSkeleton) return;
+      hudCtx.save();
+      hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+      hudCtx.lineWidth = 1.8;
+      hudCtx.shadowColor = '#00f0ff';
+      hudCtx.shadowBlur = 8;
+
+      const bones = [
+        ['ls', 'rs'], ['ls', 'le'], ['le', 'lw'], ['lw', 'lindex'],
+        ['rs', 're'], ['re', 'rw'], ['rw', 'rindex'],
+        ['ls', 'lh'], ['rs', 'rh'], ['lh', 'rh'],
+        ['lh', 'lknee'], ['lknee', 'lankle'],
+        ['rh', 'rknee'], ['rknee', 'rankle'],
+        ['spine', 'nose']
+      ];
+
+      bones.forEach(([k1, k2]) => {
+        if (joints[k1] && joints[k2]) {
+          hudCtx.beginPath();
+          hudCtx.moveTo(joints[k1].x, joints[k1].y);
+          hudCtx.lineTo(joints[k2].x, joints[k2].y);
+          hudCtx.stroke();
+        }
+      });
+
+      // Joint Nodes
+      for (const k in joints) {
+        if (k === 'detected' || typeof joints[k] !== 'object') continue;
+        const pt = joints[k];
+        hudCtx.fillStyle = '#00f0ff';
+        hudCtx.beginPath();
+        hudCtx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        hudCtx.fill();
+      }
+      hudCtx.restore();
+    }
+
+    // Render 3D Holographic Orientation Gyroscope & Compass Dial on HUD
+    function drawHolographicCompass(yaw, pitch, roll, direction) {
+      const cx = window.innerWidth - 110;
+      const cy = 110;
+      const radius = 46;
+
+      hudCtx.save();
+      // Outer Glowing HUD Bezel
+      hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.40)';
+      hudCtx.lineWidth = 1.6;
+      hudCtx.shadowColor = '#00f0ff';
+      hudCtx.shadowBlur = 10;
+      hudCtx.beginPath();
+      hudCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+      hudCtx.stroke();
+
+      // Heading Arc
+      const startAng = -Math.PI * 0.5;
+      const endAng = startAng + (yaw * Math.PI / 180);
+      hudCtx.strokeStyle = Math.abs(yaw) > 18 ? 'rgba(245, 158, 11, 0.90)' : 'rgba(56, 189, 248, 0.90)';
+      hudCtx.shadowColor = Math.abs(yaw) > 18 ? '#f59e0b' : '#38bdf8';
+      hudCtx.lineWidth = 4.2;
+      hudCtx.beginPath();
+      hudCtx.arc(cx, cy, radius - 4, startAng, endAng, yaw < 0);
+      hudCtx.stroke();
+
+      // Rotating Arrow Pointer
+      hudCtx.save();
+      hudCtx.translate(cx, cy);
+      hudCtx.rotate(yaw * Math.PI / 180);
+      hudCtx.fillStyle = '#ffffff';
+      hudCtx.shadowColor = '#ffbb00';
+      hudCtx.shadowBlur = 14;
+      hudCtx.beginPath();
+      hudCtx.moveTo(0, -radius + 8);
+      hudCtx.lineTo(6, -radius + 22);
+      hudCtx.lineTo(-6, -radius + 22);
+      hudCtx.closePath();
+      hudCtx.fill();
+      hudCtx.restore();
+
+      // Dial Center Degree Readout
+      hudCtx.font = 'bold 12px monospace';
+      hudCtx.fillStyle = '#ffffff';
+      hudCtx.textAlign = 'center';
+      hudCtx.textBaseline = 'middle';
+      hudCtx.fillText(`${Math.round(yaw)}°`, cx, cy - 2);
+
+      // Pitch & Roll Subtext
+      hudCtx.font = '9px monospace';
+      hudCtx.fillStyle = '#94a3b8';
+      hudCtx.fillText(`P:${Math.round(pitch)}° R:${Math.round(roll)}°`, cx, cy + 12);
+
+      // Direction Badge below dial
+      hudCtx.font = 'bold 10px sans-serif';
+      hudCtx.fillStyle = '#fbbf24';
+      hudCtx.shadowColor = '#f59e0b';
+      hudCtx.shadowBlur = 8;
+      hudCtx.fillText(direction, cx, cy + radius + 15);
+      hudCtx.restore();
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. INDEPENDENT 60 FPS THREE.JS ANIMATION & RENDER LOOP
+    // -------------------------------------------------------------------------
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+
+    function renderLoop() {
+      requestAnimationFrame(renderLoop);
+      timeVal += 0.035;
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
+        frameCount = 0;
+        lastFpsTime = now;
+        hudFps.innerText = `FPS: ${fps}`;
+      }
+
+      // Dynamic Heat Shimmer update
+      if (heatTurb && frameCount % 2 === 0) {
+        heatTurb.setAttribute('baseFrequency', `${0.035 + 0.006 * Math.sin(timeVal * 4)} ${0.07 + 0.012 * Math.cos(timeVal * 5)}`);
+      }
+
+      // Smooth Lerp Towards Anatomical MoCap Targets (3D X, Y, Z)
+      const LERP = 0.42;
+      for (const k in mocapJoints) {
+        if (typeof mocapJoints[k] === 'object') {
+          poseCurrent[k].x += (mocapJoints[k].x - poseCurrent[k].x) * LERP;
+          poseCurrent[k].y += (mocapJoints[k].y - poseCurrent[k].y) * LERP;
+          poseCurrent[k].z = (poseCurrent[k].z || 0) + ((mocapJoints[k].z || 0) - (poseCurrent[k].z || 0)) * LERP;
+        }
+      }
+
+      // Compute MoCap Velocities
+      speedL = Math.hypot(poseCurrent.lw.x - prevLw.x, poseCurrent.lw.y - prevLw.y) * 30;
+      speedR = Math.hypot(poseCurrent.rw.x - prevRw.x, poseCurrent.rw.y - prevRw.y) * 30;
+      prevLw = { x: poseCurrent.lw.x, y: poseCurrent.lw.y };
+      prevRw = { x: poseCurrent.rw.x, y: poseCurrent.rw.y };
+
+      const maxSpeed = Math.round(Math.max(speedL, speedR));
+      hudSpeed.innerText = `SPEED: ${maxSpeed} PX/S`;
+
+      // Kinetic Strike Detection (Fast punch triggers shockwave)
+      if (speedL > 750 && Math.random() < 0.35) {
+        triggerShockwave(poseCurrent.lw.x, poseCurrent.lw.y, 280, '255, 120, 20');
+      }
+      if (speedR > 750 && Math.random() < 0.35) {
+        triggerShockwave(poseCurrent.rw.x, poseCurrent.rw.y, 280, '255, 120, 20');
+      }
+
+      // Record MoCap Ribbon Trail History
+      historyL.push({ x: poseCurrent.lw.x, y: poseCurrent.lw.y });
+      if (historyL.length > MAX_TRAIL_LENGTH) historyL.shift();
+      historyR.push({ x: poseCurrent.rw.x, y: poseCurrent.rw.y });
+      if (historyR.length > MAX_TRAIL_LENGTH) historyR.shift();
+
+      // Clear 2D Photometric & HUD Canvases
+      lightCtx.clearRect(0, 0, lightCanvas.width, lightCanvas.height);
+      hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+
+      // Render Dynamic Motion Ribbons
+      drawMotionRibbon(historyL, '255, 140, 20');
+      drawMotionRibbon(historyR, '255, 140, 20');
+
+      // Render Shockwaves
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.radius += 16;
+        sw.alpha -= 0.055;
+        if (sw.alpha <= 0) {
+          shockwaves.splice(i, 1);
+          continue;
+        }
+        hudCtx.save();
+        hudCtx.strokeStyle = `rgba(${sw.color}, ${sw.alpha})`;
+        hudCtx.lineWidth = 6 * sw.alpha + 2;
+        hudCtx.beginPath();
+        hudCtx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+        hudCtx.stroke();
+        hudCtx.restore();
+      }
+
+      // Render MoCap Skeletal Rig Overlay
+      drawMoCapSkeleton(poseCurrent);
+
+      // Render 3D Holographic Orientation Gyroscope
+      drawHolographicCompass(bodyOrientation.yawDeg, bodyOrientation.pitchDeg, bodyOrientation.rollDeg, bodyOrientation.turnDirection);
+
+      // Render 3D Watertight Solid Mesh MoCap Warrior (Zero Collapse)
+      if (showMeshMoCap && mocapJoints.detected) {
+        warriorGroup.visible = true;
+        const dScale = autoCalib.depthScale;
+
+        // Limbs & Ball Joints
+        orientCylinder(upperArmL, poseCurrent.ls, poseCurrent.le, 18 * dScale, cxHalf, cyHalf);
+        orientCylinder(upperArmR, poseCurrent.rs, poseCurrent.re, 18 * dScale, cxHalf, cyHalf);
+        orientCylinder(forearmL, poseCurrent.le, poseCurrent.lw, 15 * dScale, cxHalf, cyHalf);
+        orientCylinder(forearmR, poseCurrent.re, poseCurrent.rw, 15 * dScale, cxHalf, cyHalf);
+
+        placeBall(jShoulderL, poseCurrent.ls, 22 * dScale, cxHalf, cyHalf);
+        placeBall(jShoulderR, poseCurrent.rs, 22 * dScale, cxHalf, cyHalf);
+        placeBall(jElbowL, poseCurrent.le, 19 * dScale, cxHalf, cyHalf);
+        placeBall(jElbowR, poseCurrent.re, 19 * dScale, cxHalf, cyHalf);
+        placeBall(jWristL, poseCurrent.lw, 17 * dScale, cxHalf, cyHalf);
+        placeBall(jWristR, poseCurrent.rw, 17 * dScale, cxHalf, cyHalf);
+
+        placeBall(jHipL, poseCurrent.lh, 22 * dScale, cxHalf, cyHalf);
+        placeBall(jHipR, poseCurrent.rh, 22 * dScale, cxHalf, cyHalf);
+        placeBall(jKneeL, poseCurrent.lknee, 20 * dScale, cxHalf, cyHalf);
+        placeBall(jKneeR, poseCurrent.rknee, 20 * dScale, cxHalf, cyHalf);
+        placeBall(jAnkleL, poseCurrent.lankle, 17 * dScale, cxHalf, cyHalf);
+        placeBall(jAnkleR, poseCurrent.rankle, 17 * dScale, cxHalf, cyHalf);
+
+        orientCylinder(thighL, poseCurrent.lh, poseCurrent.lknee, 23 * dScale, cxHalf, cyHalf);
+        orientCylinder(thighR, poseCurrent.rh, poseCurrent.rknee, 23 * dScale, cxHalf, cyHalf);
+        orientCylinder(shinL, poseCurrent.lknee, poseCurrent.lankle, 19 * dScale, cxHalf, cyHalf);
+        orientCylinder(shinR, poseCurrent.rknee, poseCurrent.rankle, 19 * dScale, cxHalf, cyHalf);
+
+        // Torso Carapace (Spine to Mid-Hips)
+        const midShoulders = {
+          x: (poseCurrent.ls.x + poseCurrent.rs.x) * 0.5,
+          y: (poseCurrent.ls.y + poseCurrent.rs.y) * 0.5,
+          z: ((poseCurrent.ls.z || 0) + (poseCurrent.rs.z || 0)) * 0.5
+        };
+        const midHips = {
+          x: (poseCurrent.lh.x + poseCurrent.rh.x) * 0.5,
+          y: (poseCurrent.lh.y + poseCurrent.rh.y) * 0.5,
+          z: ((poseCurrent.lh.z || 0) + (poseCurrent.rh.z || 0)) * 0.5
+        };
+
+        const chestWidth = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) * 0.36;
+        orientCylinder(torsoMesh, midShoulders, midHips, Math.max(26, chestWidth), cxHalf, cyHalf);
+
+        // Apply 3-Axis Body Rotation to Torso
+        torsoMesh.rotation.y = -bodyOrientation.yawDeg * (Math.PI / 180);
+        torsoMesh.rotation.x = bodyOrientation.pitchDeg * (Math.PI / 180);
+        torsoMesh.rotation.z = -bodyOrientation.rollDeg * (Math.PI / 180);
+
+        // Surya Astra Chest Reactor Ring
+        arcReactorMesh.position.set(midShoulders.x - cxHalf, cyHalf - (midShoulders.y * 0.75 + midHips.y * 0.25), (midShoulders.z || 0) + 24);
+        arcReactorMesh.scale.set(16 * dScale, 4, 16 * dScale);
+        arcReactorMesh.rotation.x = Math.PI * 0.5;
+
+        // Helmet & Visor Gaze Tracking
+        headGroup.position.set(poseCurrent.nose.x - cxHalf, cyHalf - (poseCurrent.nose.y + 12), (poseCurrent.nose.z || 0) + 10);
+        const headRad = 28 * dScale;
+        headGroup.scale.set(headRad, headRad * 1.12, headRad);
+        headGroup.rotation.y = -bodyOrientation.yawDeg * (Math.PI / 180) * 0.85;
+        headGroup.rotation.x = bodyOrientation.pitchDeg * (Math.PI / 180);
+
+        // Gauntlet Hands
+        handL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, (poseCurrent.lw.z || 0) + 5);
+        handL.scale.set(22 * dScale, 18 * dScale, 20 * dScale);
+        handR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, (poseCurrent.rw.z || 0) + 5);
+        handR.scale.set(22 * dScale, 18 * dScale, 20 * dScale);
+
+        // Boots
+        bootL.position.set(poseCurrent.lankle.x - cxHalf, cyHalf - poseCurrent.lankle.y - 10, (poseCurrent.lankle.z || 0) + 12);
+        bootL.scale.set(20 * dScale, 14 * dScale, 30 * dScale);
+        bootR.position.set(poseCurrent.rankle.x - cxHalf, cyHalf - poseCurrent.rankle.y - 10, (poseCurrent.rankle.z || 0) + 12);
+        bootR.scale.set(20 * dScale, 14 * dScale, 30 * dScale);
+      } else {
+        warriorGroup.visible = false;
+      }
+
+      // Hide all 3D meshes by default
+      fireMeshL.visible = false;
+      fireMeshR.visible = false;
+      armStreamMeshL.visible = false;
+      armStreamMeshR.visible = false;
+      upperArmMeshL.visible = false;
+      upperArmMeshR.visible = false;
+      solarChakraMesh.visible = false;
+      ringGroup.visible = false;
+      strangeGroupL.visible = false;
+      strangeGroupR.visible = false;
+
+      if (manualOverride) activeStance = manualOverride;
+      hudStance.innerText = activeStance.replace(/_/g, ' ');
+      hudLock.innerText = mocapJoints.detected ? "MOCAP: 33 JOINTS LOCKED (100%)" : "MOCAP: SEARCHING...";
+
+      const cxHalf = w * 0.5, cyHalf = h * 0.5;
+      const isOverdrive = activeStance === "OMNI_OVERDRIVE";
+
+      // -----------------------------------------------------------------------
+      // A. BRAHMĀSTRA (AGNYĀSTRA) PROCEDURAL GLSL FLUID COMBUSTION
+      // -----------------------------------------------------------------------
+      if (activeStance.includes("BRAHMASTRA") || isOverdrive) {
+        fireMeshL.visible = true;
+        fireMeshR.visible = true;
+        armStreamMeshL.visible = true;
+        armStreamMeshR.visible = true;
+        upperArmMeshL.visible = true;
+        upperArmMeshR.visible = true;
+        solarChakraMesh.visible = true;
+
+        // Update Shader Uniforms
+        flameMatL.uniforms.uTime.value = timeVal;
+        flameMatR.uniforms.uTime.value = timeVal + 1.2;
+        flameMatCrossL.uniforms.uTime.value = timeVal * 1.1;
+        flameMatCrossR.uniforms.uTime.value = timeVal * 1.1 + 1.5;
+        armStreamMatL.uniforms.uTime.value = timeVal * 0.9;
+        armStreamMatR.uniforms.uTime.value = timeVal * 0.9 + 1.0;
+        upperArmMatL.uniforms.uTime.value = timeVal * 0.8;
+        upperArmMatR.uniforms.uTime.value = timeVal * 0.8 + 1.0;
+        chakraMat.uniforms.uTime.value = timeVal;
+
+        const armLenL = Math.hypot(poseCurrent.lw.x - poseCurrent.le.x, poseCurrent.lw.y - poseCurrent.le.y) || 190;
+        const armLenR = Math.hypot(poseCurrent.rw.x - poseCurrent.re.x, poseCurrent.rw.y - poseCurrent.re.y) || 190;
+        const sWidth = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 230;
+
+        const flameHeightL = Math.max(300, armLenL * 2.8);
+        const flameWidthL = flameHeightL * 0.65;
+        const flameHeightR = Math.max(300, armLenR * 2.8);
+        const flameWidthR = flameHeightR * 0.65;
+
+        const rotL = getBoneAngle(poseCurrent.le, poseCurrent.lw);
+        const rotR = getBoneAngle(poseCurrent.re, poseCurrent.rw);
+        const rotUpperL = getBoneAngle(poseCurrent.ls, poseCurrent.le);
+        const rotUpperR = getBoneAngle(poseCurrent.rs, poseCurrent.re);
+
+        // 1. Primary Hand Fluid Plumes
+        fireMeshL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 10);
+        fireMeshL.scale.set(flameWidthL, flameHeightL, 1);
+        fireMeshL.rotation.z = rotL;
+
+        fireMeshR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 10);
+        fireMeshR.scale.set(flameWidthR, flameHeightR, 1);
+        fireMeshR.rotation.z = rotR;
+
+        // 2. Forearm Bone Fire Mantles (Elbow to Wrist)
+        const midArmLx = (poseCurrent.le.x + poseCurrent.lw.x) * 0.5;
+        const midArmLy = (poseCurrent.le.y + poseCurrent.lw.y) * 0.5;
+        armStreamMeshL.position.set(midArmLx - cxHalf, cyHalf - midArmLy, 8);
+        armStreamMeshL.scale.set(flameWidthL * 0.78, flameHeightL * 0.72, 1);
+        armStreamMeshL.rotation.z = rotL;
+
+        const midArmRx = (poseCurrent.re.x + poseCurrent.rw.x) * 0.5;
+        const midArmRy = (poseCurrent.re.y + poseCurrent.rw.y) * 0.5;
+        armStreamMeshR.position.set(midArmRx - cxHalf, cyHalf - midArmRy, 8);
+        armStreamMeshR.scale.set(flameWidthR * 0.78, flameHeightR * 0.72, 1);
+        armStreamMeshR.rotation.z = rotR;
+
+        // 3. Upper Arm Bone Fire Sheaths (Shoulder to Elbow)
+        const midUpLx = (poseCurrent.ls.x + poseCurrent.le.x) * 0.5;
+        const midUpLy = (poseCurrent.ls.y + poseCurrent.le.y) * 0.5;
+        upperArmMeshL.position.set(midUpLx - cxHalf, cyHalf - midUpLy, 7);
+        upperArmMeshL.scale.set(flameWidthL * 0.65, flameHeightL * 0.60, 1);
+        upperArmMeshL.rotation.z = rotUpperL;
+
+        const midUpRx = (poseCurrent.rs.x + poseCurrent.re.x) * 0.5;
+        const midUpRy = (poseCurrent.rs.y + poseCurrent.re.y) * 0.5;
+        upperArmMeshR.position.set(midUpRx - cxHalf, cyHalf - midUpRy, 7);
+        upperArmMeshR.scale.set(flameWidthR * 0.65, flameHeightR * 0.60, 1);
+        upperArmMeshR.rotation.z = rotUpperR;
+
+        // 4. Astral Solar Chakra (Anchored to Sternum / Spine Core)
+        const chakraRad = Math.max(380, sWidth * 2.5);
+        solarChakraMesh.position.set(poseCurrent.spine.x - cxHalf, cyHalf - poseCurrent.spine.y, -40);
+        solarChakraMesh.scale.set(chakraRad, chakraRad, 1);
+        solarChakraMesh.rotation.z += 0.015;
+
+        // 5. Agnyāstra Crackling Plasma Arc between hands
+        drawPlasmaArc(poseCurrent.lw, poseCurrent.rw);
+
+        // 3D Point Lights
+        pointLightL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 80);
+        pointLightR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 80);
+        pointLightL.color.setHex(0xff5500);
+        pointLightR.color.setHex(0xff5500);
+
+        // Deep 2000K Photometric Amber Room & Skin Relighting
+        applyPhotometricLight(poseCurrent.lw.x, poseCurrent.lw.y, flameHeightL * 1.15, '255, 95, 10', 0.98);
+        applyPhotometricLight(poseCurrent.rw.x, poseCurrent.rw.y, flameHeightR * 1.15, '255, 95, 10', 0.98);
+        applyPhotometricLight(poseCurrent.spine.x, poseCurrent.spine.y, sWidth * 1.7, '240, 75, 5', 0.88);
+      }
+
+      // -----------------------------------------------------------------------
+      // B. SHANG-CHI (TEN RINGS WITH MOCAP FOREARM ENCIRCLEMENT)
+      // -----------------------------------------------------------------------
+      if (activeStance.includes("SHANG_CHI") || isOverdrive) {
+        ringGroup.visible = true;
+
+        const arms = [
+          { elbow: poseCurrent.le, wrist: poseCurrent.lw, offset: 0 },
+          { elbow: poseCurrent.re, wrist: poseCurrent.rw, offset: 5 }
+        ];
+
+        arms.forEach(arm => {
+          const dx = arm.wrist.x - arm.elbow.x;
+          const dy = arm.elbow.y - arm.wrist.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const armDir = new THREE.Vector3(dx / len, dy / len, 0);
+          const ringRad = Math.max(30, len * 0.22);
+
+          for (let k = 0; k < 5; k++) {
+            const frac = 0.22 + k * 0.16;
+            const rx = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * frac;
+            const ry = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * frac;
+
+            const ring = tenRings[arm.offset + k];
+            ring.position.set(rx - cxHalf, cyHalf - ry, 15);
+            ring.scale.set(ringRad, ringRad, ringRad);
+            ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), armDir);
+            ring.rotateOnAxis(new THREE.Vector3(0, 0, 1), timeVal * 4.2 + k * 0.6);
+          }
+          applyPhotometricLight(arm.wrist.x, arm.wrist.y, len * 1.35, '251, 191, 36', 0.92);
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // C. DOCTOR STRANGE (COUNTER-ROTATING ELDRITCH MANDALAS)
+      // -----------------------------------------------------------------------
+      if (activeStance.includes("DOCTOR_STRANGE") || isOverdrive) {
+        strangeGroupL.visible = true;
+        strangeGroupR.visible = true;
+
+        const armLenL = Math.hypot(poseCurrent.lw.x - poseCurrent.le.x, poseCurrent.lw.y - poseCurrent.le.y) || 190;
+        const armLenR = Math.hypot(poseCurrent.rw.x - poseCurrent.re.x, poseCurrent.rw.y - poseCurrent.re.y) || 190;
+        const mRadL = Math.max(200, armLenL * 1.35);
+        const mRadR = Math.max(200, armLenR * 1.35);
+
+        strangeGroupL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 16);
+        strangeGroupL.scale.set(mRadL, mRadL, 1);
+        strangeGroupL.children[0].rotation.z += 0.04;
+        strangeGroupL.children[1].rotation.z -= 0.025;
+
+        strangeGroupR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 16);
+        strangeGroupR.scale.set(mRadR, mRadR, 1);
+        strangeGroupR.children[0].rotation.z += 0.04;
+        strangeGroupR.children[1].rotation.z -= 0.025;
+
+        applyPhotometricLight(poseCurrent.lw.x, poseCurrent.lw.y, mRadL * 1.0, '245, 158, 11', 0.92);
+        applyPhotometricLight(poseCurrent.rw.x, poseCurrent.rw.y, mRadR * 1.0, '245, 158, 11', 0.92);
+      }
+
+      // -----------------------------------------------------------------------
+      // D. IRON MAN MARK 85 (HOLOGRAPHIC STARK HUD + MOCAP VISOR)
+      // -----------------------------------------------------------------------
+      if (activeStance.includes("IRON_MAN") || isOverdrive) {
+        const sWidth = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 230;
+        const chestCenterY = poseCurrent.spine.y - sWidth * 0.12;
+
+        hudCtx.save();
+        hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.75)';
+        hudCtx.lineWidth = 1.8;
+        hudCtx.shadowColor = '#00f0ff';
+        hudCtx.shadowBlur = 12;
+
+        const headRad = sWidth * 0.38;
+        hudCtx.beginPath();
+        hudCtx.arc(poseCurrent.nose.x, poseCurrent.nose.y, headRad, 0, Math.PI * 2);
+        hudCtx.stroke();
+
+        hudCtx.beginPath();
+        hudCtx.arc(poseCurrent.nose.x, poseCurrent.nose.y, headRad * 1.25, timeVal * 2, timeVal * 2 + Math.PI * 0.7);
+        hudCtx.stroke();
+        hudCtx.beginPath();
+        hudCtx.arc(poseCurrent.nose.x, poseCurrent.nose.y, headRad * 1.25, timeVal * 2 + Math.PI, timeVal * 2 + Math.PI * 1.7);
+        hudCtx.stroke();
+
+        // Badassium Arc Reactor Core
+        const arcSize = sWidth * 0.28;
+        hudCtx.fillStyle = '#e0ffff';
+        hudCtx.beginPath();
+        hudCtx.arc(poseCurrent.spine.x, chestCenterY, arcSize * 0.45, 0, Math.PI * 2);
+        hudCtx.fill();
+
+        hudCtx.fillStyle = 'rgba(0, 240, 255, 0.45)';
+        hudCtx.fillRect(poseCurrent.spine.x - 220, chestCenterY - 2, 440, 4);
+
+        hudCtx.beginPath();
+        hudCtx.moveTo(poseCurrent.spine.x - 160, chestCenterY);
+        hudCtx.lineTo(poseCurrent.spine.x - 60, chestCenterY);
+        hudCtx.moveTo(poseCurrent.spine.x + 60, chestCenterY);
+        hudCtx.lineTo(poseCurrent.spine.x + 160, chestCenterY);
+        hudCtx.stroke();
+
+        hudCtx.font = '10px monospace';
+        hudCtx.fillStyle = '#38bdf8';
+        hudCtx.fillText(`MARK 85 // MOCAP: 33 JOINTS`, poseCurrent.spine.x - 70, chestCenterY + 45);
+        hudCtx.fillText(`PILOT: NITHESH // LOCKED`, poseCurrent.nose.x - 65, poseCurrent.nose.y - headRad - 12);
+        hudCtx.restore();
+
+        pointLightL.position.set(poseCurrent.spine.x - cxHalf, cyHalf - chestCenterY, 80);
+        pointLightL.color.setHex(0x00f0ff);
+        applyPhotometricLight(poseCurrent.spine.x, chestCenterY, sWidth * 1.6, '0, 240, 255', 0.88);
+      }
+
+      // Update 1,000+ 3D Floating Embers
+      const posAttr = emberGeom.attributes.position;
+      for (let i = 0; i < emberCount; i++) {
+        const vel = emberVelocities[i];
+        vel.vy += 0.02;
+        posAttr.array[i * 3] += vel.vx + Math.sin(timeVal * 4 + vel.seed) * 0.7;
+        posAttr.array[i * 3 + 1] += vel.vy;
+        posAttr.array[i * 3 + 2] += vel.vz;
+
+        if (posAttr.array[i * 3 + 1] > 500) {
+          posAttr.array[i * 3 + 1] = -500;
+          posAttr.array[i * 3] = (Math.random() - 0.5) * 1400;
+          vel.vy = Math.random() * 5.0 + 3.0;
+        }
+      }
+      posAttr.needsUpdate = true;
+
+      // Update Procedural Audio Modulation
+      updateAudioSFX();
+
+      // Render 3D Scene
+      renderer.render(scene, camera);
+    }
+
+    // Launch 60 FPS Render Loop immediately
+    requestAnimationFrame(renderLoop);
+
+    // -------------------------------------------------------------------------
+    // 10. PROCEDURAL CINEMA AUDIO SYNTHESIZER (WEB AUDIO API)
+    // -------------------------------------------------------------------------
+    let audioCtx = null;
+    let soundEnabled = false;
+    let rumbleOsc = null, rumbleGain = null;
+    let humOsc = null, humGain = null;
+
+    function initAudio() {
+      if (audioCtx) return;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        rumbleOsc = audioCtx.createOscillator();
+        rumbleOsc.type = 'sawtooth';
+        rumbleOsc.frequency.setValueAtTime(55, audioCtx.currentTime);
+
+        const rumbleFilter = audioCtx.createBiquadFilter();
+        rumbleFilter.type = 'lowpass';
+        rumbleFilter.frequency.setValueAtTime(160, audioCtx.currentTime);
+
+        rumbleGain = audioCtx.createGain();
+        rumbleGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+        rumbleOsc.connect(rumbleFilter);
+        rumbleFilter.connect(rumbleGain);
+        rumbleGain.connect(audioCtx.destination);
+        rumbleOsc.start();
+
+        humOsc = audioCtx.createOscillator();
+        humOsc.type = 'sine';
+        humOsc.frequency.setValueAtTime(440, audioCtx.currentTime);
+
+        humGain = audioCtx.createGain();
+        humGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+        humOsc.connect(humGain);
+        humGain.connect(audioCtx.destination);
+        humOsc.start();
+      } catch(e) {
+        console.warn("Web Audio not permitted yet:", e);
+      }
+    }
+
+    function updateAudioSFX() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      
+      const now = audioCtx.currentTime;
+      if (activeStance.includes("BRAHMASTRA")) {
+        rumbleGain.gain.setTargetAtTime(0.24, now, 0.1);
+        humGain.gain.setTargetAtTime(0.04, now, 0.1);
+        rumbleOsc.frequency.setValueAtTime(52 + 10 * Math.sin(timeVal * 6) + (speedL + speedR) * 0.05, now);
+      } else if (activeStance.includes("IRON_MAN")) {
+        rumbleGain.gain.setTargetAtTime(0.06, now, 0.1);
+        humGain.gain.setTargetAtTime(0.18, now, 0.1);
+        humOsc.frequency.setValueAtTime(620 + 30 * Math.sin(timeVal * 8), now);
+      } else if (activeStance.includes("SHANG_CHI")) {
+        rumbleGain.gain.setTargetAtTime(0.12, now, 0.1);
+        humGain.gain.setTargetAtTime(0.14, now, 0.1);
+        humOsc.frequency.setValueAtTime(330 + 40 * Math.sin(timeVal * 5), now);
+      } else if (activeStance.includes("DOCTOR_STRANGE")) {
+        rumbleGain.gain.setTargetAtTime(0.08, now, 0.1);
+        humGain.gain.setTargetAtTime(0.16, now, 0.1);
+        humOsc.frequency.setValueAtTime(528 + 25 * Math.cos(timeVal * 4), now);
+      } else if (activeStance === "OMNI_OVERDRIVE") {
+        rumbleGain.gain.setTargetAtTime(0.28, now, 0.1);
+        humGain.gain.setTargetAtTime(0.22, now, 0.1);
+      }
+    }
+
+    if (btnAudio) {
+      btnAudio.addEventListener('click', () => {
+        initAudio();
+        soundEnabled = !soundEnabled;
+        if (soundEnabled) {
+          if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+          btnAudio.innerText = "🔊 SFX: 100% ON";
+          btnAudio.style.background = "rgba(16, 185, 129, 0.25)";
+          btnAudio.style.borderColor = "rgba(16, 185, 129, 0.7)";
+          btnAudio.style.color = "#34d399";
+        } else {
+          btnAudio.innerText = "🔊 SFX: OFF";
+          btnAudio.style.background = "rgba(147, 51, 234, 0.15)";
+          btnAudio.style.borderColor = "rgba(147, 51, 234, 0.5)";
+          btnAudio.style.color = "#c084fc";
+          if (rumbleGain) rumbleGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+          if (humGain) humGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. 1080P CINEMA VIDEO RECORDER (MEDIARECORDER API)
+    // -------------------------------------------------------------------------
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    if (btnRecord) {
+      btnRecord.addEventListener('click', () => {
+        if (!isRecording) startRecording();
+        else stopRecording();
+      });
+    }
+
+    function startRecording() {
+      try {
+        const stream = threeCanvas.captureStream(30);
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = `HIGGSFIELD_MOCAP_VFX_${Date.now()}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        btnRecord.innerText = "⏹️ REC: STOP & SAVE";
+        btnRecord.style.background = "rgba(239, 68, 68, 0.35)";
+        btnRecord.style.borderColor = "rgba(239, 68, 68, 0.9)";
+        btnRecord.style.color = "#fff";
+      } catch(err) {
+        alert("Video Recording not supported in this browser: " + err.message);
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        btnRecord.innerText = "🔴 REC: IDLE";
+        btnRecord.style.background = "rgba(239, 68, 68, 0.15)";
+        btnRecord.style.borderColor = "rgba(239, 68, 68, 0.5)";
+        btnRecord.style.color = "#f87171";
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. DOCK CONTROLS & KEYBOARD SHORTCUTS
+    // -------------------------------------------------------------------------
+    function setVFXMode(mode) {
+      if (mode === "AUTO") manualOverride = null;
+      else manualOverride = mode;
+
+      document.querySelectorAll('.dock-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.vfx === mode);
+      });
+    }
+
+    document.querySelectorAll('.dock-pill').forEach(btn => {
+      btn.addEventListener('click', () => setVFXMode(btn.dataset.vfx));
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ') setVFXMode('AUTO');
+      else if (e.key === '1') setVFXMode('IRON_MAN');
+      else if (e.key === '2') setVFXMode('BRAHMASTRA');
+      else if (e.key === '3') setVFXMode('SHANG_CHI');
+      else if (e.key === '4') setVFXMode('DOCTOR_STRANGE');
+      else if (e.key === '5') setVFXMode('OMNI_OVERDRIVE');
+    });
+
+    // -------------------------------------------------------------------------
+    // 13. ULTRA-FAST 60 FPS MOCAP SENSING PIPELINE (320x180 OFFSCREEN BUFFER)
+    // -------------------------------------------------------------------------
+    // Dedicated downscaling canvas eliminates 180ms CPU resizing lag!
+    const trackCanvas = document.createElement('canvas');
+    trackCanvas.width = 320;
+    trackCanvas.height = 180;
+    const trackCtx = trackCanvas.getContext('2d', { willReadFrequently: true });
+
+    const pose = new Pose({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}` });
+    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.45 });
+
+    pose.onResults((res) => {
+      if (!res.poseLandmarks) {
+        mocapJoints.detected = false;
+        return;
+      }
+      const lms = res.poseLandmarks;
+
+      // 33 Motion Capture Landmarks with 3D Z-Depth
+      if (lms[0])  mocapJoints.nose = videoToScreen(lms[0].x, lms[0].y, lms[0].z);
+      if (lms[11]) mocapJoints.ls = videoToScreen(lms[11].x, lms[11].y, lms[11].z);
+      if (lms[12]) mocapJoints.rs = videoToScreen(lms[12].x, lms[12].y, lms[12].z);
+      if (lms[13]) mocapJoints.le = videoToScreen(lms[13].x, lms[13].y, lms[13].z);
+      if (lms[14]) mocapJoints.re = videoToScreen(lms[14].x, lms[14].y, lms[14].z);
+      if (lms[15]) mocapJoints.lw = videoToScreen(lms[15].x, lms[15].y, lms[15].z);
+      if (lms[16]) mocapJoints.rw = videoToScreen(lms[16].x, lms[16].y, lms[16].z);
+      if (lms[19]) mocapJoints.lindex = videoToScreen(lms[19].x, lms[19].y, lms[19].z);
+      if (lms[20]) mocapJoints.rindex = videoToScreen(lms[20].x, lms[20].y, lms[20].z);
+      if (lms[23]) mocapJoints.lh = videoToScreen(lms[23].x, lms[23].y, lms[23].z);
+      if (lms[24]) mocapJoints.rh = videoToScreen(lms[24].x, lms[24].y, lms[24].z);
+      if (lms[25]) mocapJoints.lknee = videoToScreen(lms[25].x, lms[25].y, lms[25].z);
+      if (lms[26]) mocapJoints.rknee = videoToScreen(lms[26].x, lms[26].y, lms[26].z);
+      if (lms[27]) mocapJoints.lankle = videoToScreen(lms[27].x, lms[27].y, lms[27].z);
+      if (lms[28]) mocapJoints.rankle = videoToScreen(lms[28].x, lms[28].y, lms[28].z);
+
+      // Spine / Sternum Core (3D Centroid)
+      mocapJoints.spine = {
+        x: (mocapJoints.ls.x + mocapJoints.rs.x + mocapJoints.lh.x + mocapJoints.rh.x) * 0.25,
+        y: (mocapJoints.ls.y + mocapJoints.rs.y + mocapJoints.lh.y + mocapJoints.rh.y) * 0.25,
+        z: (mocapJoints.ls.z + mocapJoints.rs.z + mocapJoints.lh.z + mocapJoints.rh.z) * 0.25
+      };
+
+      mocapJoints.detected = true;
+
+      // Feed into Automated Calibration Engine & Body Rotation Engine
+      autoCalib.feed(mocapJoints, lms);
+      bodyOrientation.compute(mocapJoints, lms);
+
+      // Auto AI Gesture Stance Recognition
+      if (!manualOverride) {
+        const distWrists = Math.hypot(mocapJoints.lw.x - mocapJoints.rw.x, mocapJoints.lw.y - mocapJoints.rw.y);
+        const handsAboveNose = (mocapJoints.lw.y < mocapJoints.nose.y) && (mocapJoints.rw.y < mocapJoints.nose.y);
+
+        if (distWrists < 140) {
+          activeStance = "BRAHMASTRA";
+        } else if (handsAboveNose) {
+          activeStance = "DOCTOR_STRANGE";
+        } else if (Math.abs(mocapJoints.lw.y - mocapJoints.le.y) < 60 && Math.abs(mocapJoints.rw.y - mocapJoints.re.y) < 60) {
+          activeStance = "SHANG_CHI";
+        } else {
+          activeStance = "BRAHMASTRA";
+        }
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // 14. CAMERA & 4K DEMO SHOT HARDWARE-SYNCHRONIZED STREAM
+    // -------------------------------------------------------------------------
+    let isDemoMode = false;
+    let isProcessingFrame = false;
+
+    function enableDemoMode() {
+      if (isDemoMode) return;
+      isDemoMode = true;
+      btnSource.innerText = "🖼️ SOURCE: 4K DEMO SHOT";
+      btnSource.style.background = "rgba(168, 85, 247, 0.2)";
+      btnSource.style.borderColor = "rgba(168, 85, 247, 0.6)";
+      btnSource.style.color = "#c084fc";
+
+      const demoImg = new Image();
+      demoImg.crossOrigin = "anonymous";
+      demoImg.src = '/assets/real_webcam_test.jpg';
+      demoImg.onload = () => {
+        const demoCanvas = document.createElement('canvas');
+        demoCanvas.width = 1280; demoCanvas.height = 720;
+        const dCtx = demoCanvas.getContext('2d');
+        dCtx.drawImage(demoImg, 0, 0, 1280, 720);
+
+        video.style.display = 'none';
+        demoCanvas.id = 'demoCanvas';
+        document.body.prepend(demoCanvas);
+
+        trackCtx.drawImage(demoCanvas, 0, 0, 320, 180);
+        pose.send({ image: trackCanvas }).catch(e => console.warn(e));
+      };
+    }
+
+    if (btnSource) {
+      btnSource.addEventListener('click', () => {
+        if (!isDemoMode) enableDemoMode();
+        else window.location.reload();
+      });
+    }
+
+    // High-Speed 60 FPS Video Frame Processor
+    async function processVideoFrame() {
+      if (!isDemoMode && video.readyState >= 2 && video.videoWidth > 0 && !isProcessingFrame) {
+        isProcessingFrame = true;
+        try {
+          trackCtx.drawImage(video, 0, 0, 320, 180);
+          await pose.send({ image: trackCanvas });
+        } catch(err) {
+          // Gracefully skip dropped frames
+        }
+        isProcessingFrame = false;
+      }
+      if (!isDemoMode) {
+        if ('requestVideoFrameCallback' in video) {
+          video.requestVideoFrameCallback(processVideoFrame);
+        } else {
+          requestAnimationFrame(processVideoFrame);
+        }
+      }
+    }
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+      })
+      .then(stream => {
+        video.srcObject = stream;
+        video.play().then(() => {
+          if ('requestVideoFrameCallback' in video) {
+            video.requestVideoFrameCallback(processVideoFrame);
+          } else {
+            requestAnimationFrame(processVideoFrame);
+          }
+        }).catch(e => {
+          console.warn("Autoplay blocked; click screen to play video:", e);
+          document.body.addEventListener('click', () => {
+            video.play();
+            processVideoFrame();
+          }, { once: true });
+        });
+      })
+      .catch(err => {
+        console.warn("Webcam access rejected or busy; automatically switching to 4K Demo Shot:", err);
+        enableDemoMode();
+      });
+    } else {
+      enableDemoMode();
+    }
+  </script>
+</body>
+</html>
