@@ -248,12 +248,14 @@
 
   <!-- Interactive Stance Dock -->
   <div class="hud-dock" id="hudDock">
-    <button class="dock-pill pill-fire active" data-vfx="BRAHMASTRA">🔥 BRAHMĀSTRA (AGNYĀSTRA)</button>
-    <button class="dock-pill" data-vfx="IRON_MAN">⚡ IRON MAN (MARK 85)</button>
-    <button class="dock-pill pill-gold" data-vfx="SHANG_CHI">🐉 SHANG-CHI (TEN RINGS)</button>
+    <button class="dock-pill pill-gold active" data-vfx="SHANG_CHI">🐉 SHANG-CHI (TEN RINGS)</button>
+    <button class="dock-pill pill-fire" id="btnSummonRings">⚡ SUMMON RINGS (MOVIE ENTRY)</button>
+    <button class="dock-pill" id="btnRingStyle">🎨 QI: TA LO GOLD</button>
+    <button class="dock-pill pill-fire" data-vfx="BRAHMASTRA">🔥 BRAHMĀSTRA</button>
+    <button class="dock-pill" data-vfx="IRON_MAN">⚡ IRON MAN</button>
     <button class="dock-pill pill-gold" data-vfx="DOCTOR_STRANGE">🔮 DOCTOR STRANGE</button>
-    <button class="dock-pill pill-overdrive" data-vfx="OMNI_OVERDRIVE">🌌 100% ALL CINEMA VFX</button>
-    <button class="dock-pill" data-vfx="AUTO">✨ AUTO AI MOCAP</button>
+    <button class="dock-pill pill-overdrive" data-vfx="OMNI_OVERDRIVE">🌌 100% ALL VFX</button>
+    <button class="dock-pill" data-vfx="AUTO">✨ AUTO AI</button>
   </div>
 
   <script>
@@ -530,25 +532,245 @@
     scene.add(solarChakraMesh);
 
     // -------------------------------------------------------------------------
-    // 4. SHANG-CHI (TEN RINGS WITH KINEMATIC BONE ALIGNMENT)
+    // 4. SHANG-CHI (PHOTOREALISTIC MARVEL MOVIE-ACCURATE TEN RINGS SYSTEM)
     // -------------------------------------------------------------------------
-    const ringGroup = new THREE.Group();
-    const tenRings = [];
-    const ringGeom = new THREE.TorusGeometry(1, 0.24, 16, 40);
-    const ringMatGold = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      metalness: 0.98,
-      roughness: 0.12,
-      emissive: 0xff8800,
-      emissiveIntensity: 1.8
+    // Procedural Damascus Steel Ancient Chinese Dragon/Cloud Filigree Rune Texture
+    function generateShangChiRuneTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      // Weathered dark iron Damascus channel
+      ctx.fillStyle = '#140f0c';
+      ctx.fillRect(0, 0, 1024, 128);
+
+      // Damascus grain lines
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      for (let i = 0; i < 800; i++) {
+        ctx.fillRect(Math.random() * 1024, Math.random() * 128, Math.random() * 3 + 1, 1);
+      }
+
+      // Ancient Chinese Carved Cloud-and-Dragon Runes (matching reference photo)
+      ctx.strokeStyle = '#e69550';
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      for (let x = 0; x < 1024; x += 48) {
+        ctx.beginPath();
+        ctx.moveTo(x, 16); ctx.lineTo(x + 48, 16);
+        ctx.moveTo(x, 112); ctx.lineTo(x + 48, 112);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x + 4, 64);
+        ctx.bezierCurveTo(x + 14, 24, x + 34, 24, x + 24, 64);
+        ctx.bezierCurveTo(x + 14, 104, x + 34, 104, x + 44, 64);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x + 18, 42, 8, 0, Math.PI * 1.6);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x + 30, 86, 8, Math.PI * 0.4, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x + 24, 52); ctx.lineTo(x + 28, 58);
+        ctx.moveTo(x + 20, 70); ctx.lineTo(x + 24, 76);
+        ctx.stroke();
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.repeat.set(4, 1);
+      return tex;
+    }
+
+    const shangChiRuneTexture = generateShangChiRuneTexture();
+
+    // Antique Forged Copper Bronze PBR Material (Exact match to reference photo)
+    const matAntiqueCopper = new THREE.MeshStandardMaterial({
+      color: 0x9c4f2b, // Rich reddish antique copper bronze
+      metalness: 0.94,
+      roughness: 0.28,
+      clearcoat: 0.35,
+      clearcoatRoughness: 0.22
     });
 
+    // Engraved Rune Inlay Material (Incandescent glowing runes)
+    const matRuneInlay = new THREE.MeshStandardMaterial({
+      color: 0x1f1712,
+      map: shangChiRuneTexture,
+      metalness: 0.88,
+      roughness: 0.42,
+      emissive: 0xff7700,
+      emissiveIntensity: 3.2
+    });
+
+    // Internal Plasma Core Material
+    const matRingPlasmaCore = new THREE.MeshBasicMaterial({
+      color: 0xffe6a0,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending
+    });
+
+    const ringGroup = new THREE.Group();
+    const tenRings = [];
+
+    // Construct 10 Layered Movie-Accurate Rings
     for (let i = 0; i < 10; i++) {
-      const ring = new THREE.Mesh(ringGeom, ringMatGold);
-      ringGroup.add(ring);
-      tenRings.push(ring);
+      const ringObj = new THREE.Group();
+
+      // 1. Heavy Chamfered Antique Copper Outer Housing
+      const outerTorus = new THREE.Mesh(
+        new THREE.TorusGeometry(1.0, 0.18, 24, 64),
+        matAntiqueCopper
+      );
+      ringObj.add(outerTorus);
+
+      // 2. Middle Recessed Carved Rune Channel
+      const runeCylinder = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.025, 1.025, 0.20, 64, 1, true),
+        matRuneInlay
+      );
+      runeCylinder.rotation.x = Math.PI * 0.5;
+      ringObj.add(runeCylinder);
+
+      // 3. Inner Polished Bronze Sleeve
+      const innerTorus = new THREE.Mesh(
+        new THREE.TorusGeometry(0.88, 0.07, 16, 48),
+        matAntiqueCopper
+      );
+      ringObj.add(innerTorus);
+
+      // 4. Internal Glowing Qi Plasma Ring
+      const plasmaRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.96, 0.05, 12, 36),
+        matRingPlasmaCore
+      );
+      ringObj.add(plasmaRing);
+
+      ringObj.userData = {
+        outerTorus,
+        runeCylinder,
+        plasmaRing,
+        currentPos: new THREE.Vector3(),
+        currentScale: 1.0,
+        spinAngle: 0.0
+      };
+
+      ringGroup.add(ringObj);
+      tenRings.push(ringObj);
     }
     scene.add(ringGroup);
+
+    // -------------------------------------------------------------------------
+    // SHANG-CHI MOVIE GESTURES & KINEMATICS ENGINE
+    // -------------------------------------------------------------------------
+    const ringsState = {
+      mode: "SHANG_CHI_GOLD", // "SHANG_CHI_GOLD" (Ta Lo Fire) or "WENWU_CYAN" (Cosmic Lightning)
+      summonActive: true,      // Active cinematic hand-entry sequence
+      summonProgress: 0.0,    // 0.0 -> 1.0
+      isLocked: false,
+      
+      // Strike projectile states (Left and Right punch launch)
+      strikeL: { active: false, progress: 0.0, dir: new THREE.Vector3() },
+      strikeR: { active: false, progress: 0.0, dir: new THREE.Vector3() },
+      
+      shieldActive: false,
+      ringLockedFlags: new Array(10).fill(false),
+
+      triggerSummon() {
+        this.summonActive = true;
+        this.summonProgress = 0.0;
+        this.isLocked = false;
+        this.ringLockedFlags.fill(false);
+        const btn = document.getElementById('btnSummonRings');
+        if (btn) {
+          btn.innerText = "⚡ RINGS: ENTERING HANDS...";
+          btn.style.background = "rgba(245, 158, 11, 0.4)";
+        }
+      },
+
+      toggleMode() {
+        this.mode = (this.mode === "SHANG_CHI_GOLD") ? "WENWU_CYAN" : "SHANG_CHI_GOLD";
+        const btn = document.getElementById('btnRingStyle');
+        if (this.mode === "SHANG_CHI_GOLD") {
+          matRuneInlay.emissive.setHex(0xff7700);
+          matRingPlasmaCore.color.setHex(0xffe6a0);
+          matAntiqueCopper.color.setHex(0x9c4f2b);
+          if (btn) btn.innerText = "🎨 QI: TA LO GOLD";
+        } else {
+          matRuneInlay.emissive.setHex(0x00d4ff);
+          matRingPlasmaCore.color.setHex(0x80f0ff);
+          matAntiqueCopper.color.setHex(0x3a506b);
+          if (btn) btn.innerText = "🎨 QI: WENWU BLUE";
+        }
+      }
+    };
+
+    // Metallic Ring Clang Impact Sound Synthesizer (Web Audio API)
+    function playRingClangSFX(pitch = 1.0) {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      const now = audioCtx.currentTime;
+
+      // 1. High-frequency metallic ping
+      const pingOsc = audioCtx.createOscillator();
+      const pingGain = audioCtx.createGain();
+      pingOsc.type = 'sine';
+      pingOsc.frequency.setValueAtTime(1850 * pitch, now);
+      pingOsc.frequency.exponentialRampToValueAtTime(1300 * pitch, now + 0.35);
+
+      pingGain.gain.setValueAtTime(0.40, now);
+      pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      pingOsc.connect(pingGain);
+      pingGain.connect(audioCtx.destination);
+      pingOsc.start(now);
+      pingOsc.stop(now + 0.36);
+
+      // 2. Heavy bronze resonance body (320Hz)
+      const bodyOsc = audioCtx.createOscillator();
+      const bodyGain = audioCtx.createGain();
+      bodyOsc.type = 'triangle';
+      bodyOsc.frequency.setValueAtTime(320 * pitch, now);
+      bodyOsc.frequency.exponentialRampToValueAtTime(180 * pitch, now + 0.45);
+
+      bodyGain.gain.setValueAtTime(0.45, now);
+      bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      bodyOsc.connect(bodyGain);
+      bodyGain.connect(audioCtx.destination);
+      bodyOsc.start(now);
+      bodyOsc.stop(now + 0.46);
+
+      // 3. High-energy plasma sizzle
+      try {
+        const noiseBuffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.15), audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseBuffer.length; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+        const noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = noiseBuffer;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(2800, now);
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.30, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        noiseNode.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noiseNode.start(now);
+      } catch(e) {}
+    }
 
     // -------------------------------------------------------------------------
     // 5. DOCTOR STRANGE COUNTER-ROTATING ELDRITCH MANDALAS
@@ -916,8 +1138,8 @@
     // -------------------------------------------------------------------------
     // 8. 33-POINT FULL-BODY MOTION CAPTURE RIG & KINETIC ENGINE
     // -------------------------------------------------------------------------
-    let manualOverride = "BRAHMASTRA";
-    let activeStance = "BRAHMASTRA";
+    let manualOverride = "SHANG_CHI";
+    let activeStance = "SHANG_CHI";
     let timeVal = 0;
 
     // Full 33-Joint MoCap Rig Structure with 3D Z-coordinates
@@ -1419,35 +1641,244 @@
       }
 
       // -----------------------------------------------------------------------
-      // B. SHANG-CHI (TEN RINGS WITH MOCAP FOREARM ENCIRCLEMENT)
+      // B. SHANG-CHI (PHOTOREALISTIC TEN RINGS MOVIE GESTURES & ENTRY SYSTEM)
       // -----------------------------------------------------------------------
       if (activeStance.includes("SHANG_CHI") || isOverdrive) {
         ringGroup.visible = true;
 
+        // Progress Summon Sequence (Rings flying in & sliding over hands)
+        if (ringsState.summonActive) {
+          ringsState.summonProgress += 0.0085;
+          if (ringsState.summonProgress >= 1.0) {
+            ringsState.summonActive = false;
+            ringsState.isLocked = true;
+            const btn = document.getElementById('btnSummonRings');
+            if (btn) {
+              btn.innerText = "⚡ RINGS: 10 LOCKED ON ARMS";
+              btn.style.background = "rgba(16, 185, 129, 0.25)";
+            }
+          }
+        }
+
+        // Fast Punch Strike Detection (Triggers ring missile launch)
+        if (speedL > 550 && !ringsState.strikeL.active && ringsState.isLocked) {
+          ringsState.strikeL.active = true;
+          ringsState.strikeL.progress = 0.0;
+          const dx = poseCurrent.lw.x - poseCurrent.le.x;
+          const dy = poseCurrent.le.y - poseCurrent.lw.y;
+          const len = Math.hypot(dx, dy) || 1;
+          ringsState.strikeL.dir.set(dx / len, dy / len, 0);
+          triggerShockwave(poseCurrent.lw.x, poseCurrent.lw.y, 350, ringsState.mode === 'SHANG_CHI_GOLD' ? '255, 140, 20' : '0, 200, 255');
+          playRingClangSFX(1.4);
+        }
+        if (speedR > 550 && !ringsState.strikeR.active && ringsState.isLocked) {
+          ringsState.strikeR.active = true;
+          ringsState.strikeR.progress = 0.0;
+          const dx = poseCurrent.rw.x - poseCurrent.re.x;
+          const dy = poseCurrent.re.y - poseCurrent.rw.y;
+          const len = Math.hypot(dx, dy) || 1;
+          ringsState.strikeR.dir.set(dx / len, dy / len, 0);
+          triggerShockwave(poseCurrent.rw.x, poseCurrent.rw.y, 350, ringsState.mode === 'SHANG_CHI_GOLD' ? '255, 140, 20' : '0, 200, 255');
+          playRingClangSFX(1.4);
+        }
+
+        // Advance Strike Projectiles
+        if (ringsState.strikeL.active) {
+          ringsState.strikeL.progress += 0.045;
+          if (ringsState.strikeL.progress >= 1.0) ringsState.strikeL.active = false;
+        }
+        if (ringsState.strikeR.active) {
+          ringsState.strikeR.progress += 0.045;
+          if (ringsState.strikeR.progress >= 1.0) ringsState.strikeR.active = false;
+        }
+
+        // Check Crossed Wrists (Dragon Qi Mandala Shield Gesture)
+        const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
+        ringsState.shieldActive = (wristDist < 160 && ringsState.isLocked);
+
         const arms = [
-          { elbow: poseCurrent.le, wrist: poseCurrent.lw, offset: 0 },
-          { elbow: poseCurrent.re, wrist: poseCurrent.rw, offset: 5 }
+          {
+            elbow: poseCurrent.le,
+            wrist: poseCurrent.lw,
+            index: poseCurrent.lindex || poseCurrent.lw,
+            offset: 0,
+            strike: ringsState.strikeL,
+            sign: -1
+          },
+          {
+            elbow: poseCurrent.re,
+            wrist: poseCurrent.rw,
+            index: poseCurrent.rindex || poseCurrent.rw,
+            offset: 5,
+            strike: ringsState.strikeR,
+            sign: 1
+          }
         ];
+
+        // Midpoint for Dragon Shield
+        const shieldMidX = (poseCurrent.lw.x + poseCurrent.rw.x) * 0.5;
+        const shieldMidY = (poseCurrent.lw.y + poseCurrent.rw.y) * 0.5;
 
         arms.forEach(arm => {
           const dx = arm.wrist.x - arm.elbow.x;
           const dy = arm.elbow.y - arm.wrist.y;
-          const len = Math.hypot(dx, dy) || 1;
-          const armDir = new THREE.Vector3(dx / len, dy / len, 0);
-          const ringRad = Math.max(30, len * 0.22);
+          const armLen = Math.hypot(dx, dy) || 1;
+          const armDir = new THREE.Vector3(dx / armLen, dy / armLen, 0);
+
+          // Vector along palm/fingers for sliding over hand
+          const hdx = arm.index.x - arm.wrist.x;
+          const hdy = arm.wrist.y - arm.index.y;
+          const handLen = Math.hypot(hdx, hdy) || 40;
+          const handDir = new THREE.Vector3(hdx / handLen, hdy / handLen, 0);
+
+          const ringRad = Math.max(34, armLen * 0.24);
 
           for (let k = 0; k < 5; k++) {
-            const frac = 0.22 + k * 0.16;
-            const rx = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * frac;
-            const ry = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * frac;
+            const ringIdx = arm.offset + k;
+            const ring = tenRings[ringIdx];
 
-            const ring = tenRings[arm.offset + k];
-            ring.position.set(rx - cxHalf, cyHalf - ry, 15);
-            ring.scale.set(ringRad, ringRad, ringRad);
-            ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), armDir);
-            ring.rotateOnAxis(new THREE.Vector3(0, 0, 1), timeVal * 4.2 + k * 0.6);
+            // Target resting slot on forearm (k=0 near elbow, k=4 near wrist)
+            const slotFrac = 0.22 + k * 0.16;
+            const targetSlotX = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * slotFrac;
+            const targetSlotY = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * slotFrac;
+
+            let curX = targetSlotX;
+            let curY = targetSlotY;
+            let curZ = 16;
+            let curScale = ringRad;
+            let curDir = armDir.clone();
+
+            // -----------------------------------------------------------------
+            // A. CINEMATIC SEQUENTIAL HAND-ENTRY ANIMATION
+            // -----------------------------------------------------------------
+            if (ringsState.summonActive) {
+              const triggerTime = k * 0.13;
+              const duration = 0.24;
+
+              if (ringsState.summonProgress < triggerTime) {
+                // Free Orbit in distant 3D space
+                const orbitAngle = timeVal * 2.2 + ringIdx * 0.65;
+                curX = arm.wrist.x + Math.cos(orbitAngle) * (420 + k * 35) * arm.sign;
+                curY = arm.wrist.y + Math.sin(orbitAngle) * 260 - 150;
+                curZ = 80 + Math.sin(orbitAngle * 2) * 90;
+                curScale = ringRad * 1.35;
+                curDir.set(Math.cos(orbitAngle), Math.sin(orbitAngle), 0.5).normalize();
+              } else if (ringsState.summonProgress < triggerTime + duration) {
+                // SLIDING OVER THE HAND (Fingertips -> Palm -> Wrist -> Forearm Slot)
+                const u = (ringsState.summonProgress - triggerTime) / duration;
+                const easeU = Math.min(1.0, Math.max(0.0, 1.0 - Math.pow(1.0 - u, 2.5)));
+
+                if (easeU < 0.35) {
+                  // Phase 1: Approaching fingertips from air
+                  const subU = easeU / 0.35;
+                  const startX = arm.index.x + handDir.x * 280 + arm.sign * 140;
+                  const startY = arm.index.y - handDir.y * 280 - 120;
+                  curX = startX + (arm.index.x - startX) * subU;
+                  curY = startY + (arm.index.y - startY) * subU;
+                  curZ = 60 * (1.0 - subU);
+                  curScale = ringRad * (1.30 - subU * 0.15);
+                  curDir.copy(handDir);
+                } else if (easeU < 0.70) {
+                  // Phase 2: Sliding OVER THE PALM & WRIST
+                  const subU = (easeU - 0.35) / 0.35;
+                  curX = arm.index.x + (arm.wrist.x - arm.index.x) * subU;
+                  curY = arm.index.y + (arm.wrist.y - arm.index.y) * subU;
+                  curZ = 20;
+                  // Expand slightly over knuckles
+                  curScale = ringRad * (1.15 + Math.sin(subU * Math.PI) * 0.18);
+                  curDir.lerpVectors(handDir, armDir, subU);
+                } else {
+                  // Phase 3: Sliding down forearm from wrist to target slot
+                  const subU = (easeU - 0.70) / 0.30;
+                  curX = arm.wrist.x + (targetSlotX - arm.wrist.x) * subU;
+                  curY = arm.wrist.y + (targetSlotY - arm.wrist.y) * subU;
+                  curZ = 16;
+                  curScale = ringRad;
+                  curDir.copy(armDir);
+                }
+              } else {
+                // Reached Forearm Slot -> LOCKING MOMENT
+                curX = targetSlotX;
+                curY = targetSlotY;
+                curZ = 16;
+                curScale = ringRad;
+                curDir.copy(armDir);
+
+                if (!ringsState.ringLockedFlags[ringIdx]) {
+                  ringsState.ringLockedFlags[ringIdx] = true;
+                  triggerShockwave(targetSlotX, targetSlotY, 260, ringsState.mode === 'SHANG_CHI_GOLD' ? '255, 180, 20' : '0, 210, 255');
+                  playRingClangSFX(1.0 + k * 0.12);
+                }
+              }
+            } else if (ringsState.shieldActive) {
+              // ---------------------------------------------------------------
+              // B. TAI CHI 10-RING REVOLVING DRAGON DEFENSE SHIELD
+              // ---------------------------------------------------------------
+              const shieldAngle = timeVal * 3.5 + (ringIdx / 10) * Math.PI * 2;
+              const shieldRadius = Math.max(160, armLen * 0.85);
+              curX = shieldMidX + Math.cos(shieldAngle) * shieldRadius;
+              curY = shieldMidY + Math.sin(shieldAngle) * shieldRadius;
+              curZ = 35 + Math.sin(shieldAngle * 3) * 20;
+              curScale = ringRad * 1.15;
+              curDir.set(Math.cos(shieldAngle), Math.sin(shieldAngle), 0).normalize();
+            } else if (arm.strike.active) {
+              // ---------------------------------------------------------------
+              // C. TEN RINGS CANNON / WHIP PROJECTILE STRIKE
+              // ---------------------------------------------------------------
+              const p = arm.strike.progress;
+              const maxDist = 480 + k * 45;
+              let forwardDist = 0;
+
+              if (p < 0.5) {
+                // Firing forward
+                const forwardU = p / 0.5;
+                forwardDist = Math.sin(forwardU * Math.PI * 0.5) * maxDist;
+              } else {
+                // Whipping back onto forearm
+                const returnU = (p - 0.5) / 0.5;
+                forwardDist = Math.cos(returnU * Math.PI * 0.5) * maxDist;
+              }
+
+              // Spiral motion along strike direction
+              const spiralAngle = timeVal * 12.0 + k * 1.2;
+              curX = targetSlotX + arm.strike.dir.x * forwardDist + Math.cos(spiralAngle) * 35;
+              curY = targetSlotY - arm.strike.dir.y * forwardDist + Math.sin(spiralAngle) * 35;
+              curZ = 20 + Math.sin(spiralAngle) * 30;
+              curScale = ringRad * (1.0 + (forwardDist / maxDist) * 0.35);
+              curDir.copy(arm.strike.dir);
+            }
+
+            // Apply 3D Transform to Ring
+            ring.position.set(curX - cxHalf, cyHalf - curY, curZ);
+            ring.scale.set(curScale, curScale, curScale);
+            ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curDir);
+            ring.rotateOnAxis(new THREE.Vector3(0, 0, 1), timeVal * 6.5 + k * 0.85);
+
+            // Inter-Ring Dragon Lightning Filaments (Connecting adjacent rings)
+            if (k < 4 && !ringsState.summonActive && !ringsState.shieldActive && !arm.strike.active) {
+              const nextRing = tenRings[ringIdx + 1];
+              if (nextRing && Math.random() < 0.45) {
+                hudCtx.save();
+                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 200, 50, 0.75)' : 'rgba(56, 189, 248, 0.75)';
+                hudCtx.lineWidth = 2.5;
+                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ffaa00' : '#00f0ff';
+                hudCtx.shadowBlur = 12;
+                hudCtx.beginPath();
+                hudCtx.moveTo(curX, curY);
+                const midRX = (curX + nextRing.position.x + cxHalf) * 0.5 + (Math.random() - 0.5) * 20;
+                const midRY = (curY + (cyHalf - nextRing.position.y)) * 0.5 + (Math.random() - 0.5) * 20;
+                hudCtx.lineTo(midRX, midRY);
+                hudCtx.lineTo(nextRing.position.x + cxHalf, cyHalf - nextRing.position.y);
+                hudCtx.stroke();
+                hudCtx.restore();
+              }
+            }
           }
-          applyPhotometricLight(arm.wrist.x, arm.wrist.y, len * 1.35, '251, 191, 36', 0.92);
+
+          // 2000K Amber Radiant Lighting on Arms and Surroundings
+          const lightCol = (ringsState.mode === 'SHANG_CHI_GOLD') ? '255, 160, 20' : '0, 210, 255';
+          applyPhotometricLight(arm.wrist.x, arm.wrist.y, armLen * 1.45, lightCol, 0.96);
+          applyPhotometricLight((arm.wrist.x + arm.elbow.x)*0.5, (arm.wrist.y + arm.elbow.y)*0.5, armLen * 1.25, lightCol, 0.85);
         });
       }
 
@@ -1553,6 +1984,31 @@
       // Render 3D Scene
       renderer.render(scene, camera);
     }
+
+
+    // Connect Shang-Chi Movie Control Buttons
+    const btnSummonRings = document.getElementById('btnSummonRings');
+    if (btnSummonRings) {
+      btnSummonRings.addEventListener('click', () => {
+        ringsState.triggerSummon();
+      });
+    }
+
+    const btnRingStyle = document.getElementById('btnRingStyle');
+    if (btnRingStyle) {
+      btnRingStyle.addEventListener('click', () => {
+        ringsState.toggleMode();
+      });
+    }
+
+    // Keyboard Shortcut 'R' for Ring Summon Gesture
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'r' || e.key === 'R') {
+        ringsState.triggerSummon();
+      } else if (e.key === 't' || e.key === 'T') {
+        ringsState.toggleMode();
+      }
+    });
 
     // Launch 60 FPS Render Loop immediately
     requestAnimationFrame(renderLoop);
