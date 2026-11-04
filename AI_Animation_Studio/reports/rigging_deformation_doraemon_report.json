@@ -1,0 +1,50 @@
+{
+  "model_file": "doraemon.glb",
+  "dqs_enabled": true,
+  "seams_welded": true,
+  "hand_weights_unified": true,
+  "test_poses": [
+    {
+      "pose": "pose_1_neutral",
+      "mesh_volume_m3": 1030161.44013,
+      "render_path": "C:\\Users\\SVNITHESHPC\\Downloads\\AI_Animation_Studio\\renders\\previews\\deformation_tests\\doraemon\\pose_1_neutral.png",
+      "render_exists": true,
+      "file_size": 948549,
+      "status": "PASS"
+    },
+    {
+      "pose": "pose_2_arm_raised",
+      "mesh_volume_m3": 1029236.71814,
+      "render_path": "C:\\Users\\SVNITHESHPC\\Downloads\\AI_Animation_Studio\\renders\\previews\\deformation_tests\\doraemon\\pose_2_arm_raised.png",
+      "render_exists": true,
+      "file_size": 948462,
+      "status": "PASS"
+    },
+    {
+      "pose": "pose_3_elbow_bent",
+      "mesh_volume_m3": 1029301.75496,
+      "render_path": "C:\\Users\\SVNITHESHPC\\Downloads\\AI_Animation_Studio\\renders\\previews\\deformation_tests\\doraemon\\pose_3_elbow_bent.png",
+      "render_exists": true,
+      "file_size": 951580,
+      "status": "PASS"
+    },
+    {
+      "pose": "pose_4_knee_bent",
+      "mesh_volume_m3": 1028255.46949,
+      "render_path": "C:\\Users\\SVNITHESHPC\\Downloads\\AI_Animation_Studio\\renders\\previews\\deformation_tests\\doraemon\\pose_4_knee_bent.png",
+      "render_exists": true,
+      "file_size": 949433,
+      "status": "PASS"
+    },
+    {
+      "pose": "pose_5_wrist_twist",
+      "mesh_volume_m3": 1030035.73962,
+      "render_path": "C:\\Users\\SVNITHESHPC\\Downloads\\AI_Animation_Studio\\renders\\previews\\deformation_tests\\doraemon\\pose_5_wrist_twist.png",
+      "render_exists": true,
+      "file_size": 950487,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS",
+  "execution_time_seconds": 14.77
+}
