@@ -1036,33 +1036,41 @@
     }
 
     const ringsState = {
-      mode: "SHANG_CHI_GOLD", // "SHANG_CHI_GOLD" (Ta Lo Fire) or "WENWU_CYAN" (Cosmic Lightning)
+      mode: "SHANG_CHI_GOLD", // "SHANG_CHI_GOLD" or "WENWU_CYAN"
       
-      // LEFT HAND: 5 RINGS (Indices 0, 1, 2, 3, 4)
+      // LEFT HAND: 5 RINGS (0..4)
       left: {
-        worn: true,            // 5 rings securely worn on left forearm
-        summonActive: false,   // Flying in & sliding over left hand
-        summonProgress: 1.0,   // 1.0 = fully on arm
-        strikeActive: false,   // Outward kinetic punch blast & return
-        strikeProgress: 0.0,
-        strikeDir: new THREE.Vector3(-0.30, 0.10, 0.85),
-        latched: false,        // Retraction latch
-        origins: []
-      },
-
-      // RIGHT HAND: 5 RINGS (Indices 5, 6, 7, 8, 9)
-      right: {
-        worn: true,            // 5 rings securely worn on right forearm
-        summonActive: false,   // Flying in & sliding over right hand
+        worn: true,            // 5 rings securely on forearm
+        summonActive: false,   // Entry glide
         summonProgress: 1.0,
-        strikeActive: false,   // Outward kinetic punch blast & return
-        strikeProgress: 0.0,
-        strikeDir: new THREE.Vector3(0.30, 0.10, 0.85),
-        latched: false,
+
+        // DYNAMIC HAND-TETHERED STRIKE & AUTOMATIC PULL-BACK
+        flightDist: 0.0,       // Distance in pixels from wrist (0 = on forearm)
+        isStriking: false,     // Actively driving forward or suspended at target
+        isRetracting: false,   // Hand pulling back -> rings whip back automatically!
+        peakReach: 0.0,        // Highest reach reached in current punch
+        holdFrames: 0,
+        strikeDir: new THREE.Vector3(-0.30, 0.10, 0.85),
         origins: []
       },
 
-      // DUAL GESTURES (When both hands act in unison)
+      // RIGHT HAND: 5 RINGS (5..9)
+      right: {
+        worn: true,
+        summonActive: false,
+        summonProgress: 1.0,
+
+        // DYNAMIC HAND-TETHERED STRIKE & AUTOMATIC PULL-BACK
+        flightDist: 0.0,
+        isStriking: false,
+        isRetracting: false,
+        peakReach: 0.0,
+        holdFrames: 0,
+        strikeDir: new THREE.Vector3(0.30, 0.10, 0.85),
+        origins: []
+      },
+
+      // DUAL GESTURES
       mandalaShieldActive: false, // 10-ring concentric dragon shield
       _clapCooldown: false,
 
@@ -1071,6 +1079,8 @@
         this.left.summonActive = true;
         this.left.summonProgress = 0.0;
         this.left.worn = true;
+        this.left.flightDist = 0.0;
+        this.left.isStriking = false;
         const cw = window.innerWidth, ch = window.innerHeight;
         this.left.origins = [];
         for (let k = 0; k < 5; k++) {
@@ -1086,10 +1096,11 @@
       },
 
       triggerStrikeLeft(customDir = null) {
-        if (this.left.strikeActive || this.left.summonActive || this.mandalaShieldActive) return;
-        this.left.strikeActive = true;
-        this.left.strikeProgress = 0.0;
-        this.left.latched = true;
+        if (this.left.summonActive || this.mandalaShieldActive) return;
+        this.left.isStriking = true;
+        this.left.isRetracting = false;
+        this.left.holdFrames = 0;
+        this.left.peakReach = (typeof reach3dL !== 'undefined') ? reach3dL : 150;
         if (customDir) {
           this.left.strikeDir.copy(customDir).normalize();
         } else {
@@ -1100,7 +1111,7 @@
           this.left.strikeDir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
         }
         playRingClangSFX(1.35);
-        showQiToast("💥 LEFT FIST: 5 RINGS KINETIC BLAST!");
+        showQiToast("💥 LEFT FIST: 5 RINGS LAUNCHED!");
         updateRingsUI();
       },
 
@@ -1109,6 +1120,8 @@
         this.right.summonActive = true;
         this.right.summonProgress = 0.0;
         this.right.worn = true;
+        this.right.flightDist = 0.0;
+        this.right.isStriking = false;
         const cw = window.innerWidth, ch = window.innerHeight;
         this.right.origins = [];
         for (let k = 0; k < 5; k++) {
@@ -1124,10 +1137,11 @@
       },
 
       triggerStrikeRight(customDir = null) {
-        if (this.right.strikeActive || this.right.summonActive || this.mandalaShieldActive) return;
-        this.right.strikeActive = true;
-        this.right.strikeProgress = 0.0;
-        this.right.latched = true;
+        if (this.right.summonActive || this.mandalaShieldActive) return;
+        this.right.isStriking = true;
+        this.right.isRetracting = false;
+        this.right.holdFrames = 0;
+        this.right.peakReach = (typeof reach3dR !== 'undefined') ? reach3dR : 150;
         if (customDir) {
           this.right.strikeDir.copy(customDir).normalize();
         } else {
@@ -1138,7 +1152,7 @@
           this.right.strikeDir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
         }
         playRingClangSFX(1.45);
-        showQiToast("💥 RIGHT FIST: 5 RINGS KINETIC BLAST!");
+        showQiToast("💥 RIGHT FIST: 5 RINGS LAUNCHED!");
         updateRingsUI();
       },
 
@@ -1187,18 +1201,17 @@
     function updateRingsUI() {
       const btnL = document.getElementById('btnStrikeLeft');
       if (btnL) {
-        btnL.style.background = ringsState.left.strikeActive ? "rgba(239, 68, 68, 0.4)" : "rgba(245, 158, 11, 0.25)";
+        btnL.style.background = ringsState.left.isStriking ? "rgba(239, 68, 68, 0.4)" : "rgba(245, 158, 11, 0.25)";
       }
       const btnR = document.getElementById('btnStrikeRight');
       if (btnR) {
-        btnR.style.background = ringsState.right.strikeActive ? "rgba(239, 68, 68, 0.4)" : "rgba(245, 158, 11, 0.25)";
+        btnR.style.background = ringsState.right.isStriking ? "rgba(239, 68, 68, 0.4)" : "rgba(245, 158, 11, 0.25)";
       }
       const btnShield = document.getElementById('btnShield');
       if (btnShield) {
         btnShield.style.background = ringsState.mandalaShieldActive ? "rgba(16, 185, 129, 0.4)" : "";
       }
     }
-
     // Metallic Ring Clang Impact Sound Synthesizer (Web Audio API)
     function playRingClangSFX(pitch = 1.0) {
       if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
@@ -1377,44 +1390,45 @@
       active: true,
       locked: false,
       sampleCount: 0,
-      TARGET_SAMPLES: 25,
-      // Baseline calibrated dimensions in pixels
+      TARGET_SAMPLES: 15,
+      // Baseline calibrated dimensions in pixels (Upper-body webcam compatible)
       shoulderSpan: 240,
-      torsoLength: 220,
-      upperArmL: 110,
+      upperArmL: 120,
       forearmL: 110,
-      upperArmR: 110,
+      upperArmR: 120,
       forearmR: 110,
-      thighL: 160,
-      shinL: 160,
-      thighR: 160,
-      shinR: 160,
+      armLenL: 230,
+      armLenR: 230,
       depthScale: 1.0,
       
       feed(joints, rawLms) {
-        if (!joints.detected || !joints.ls || !joints.rs || !joints.lh || !joints.rh) return;
+        if (!joints.detected || !joints.ls || !joints.rs || !joints.le || !joints.re || !joints.lw || !joints.rw) return;
         
         const currShoulderSpan = Math.hypot(joints.rs.x - joints.ls.x, joints.rs.y - joints.ls.y);
-        const currTorso = Math.hypot(joints.spine.x - ((joints.lh.x + joints.rh.x)*0.5), joints.spine.y - ((joints.lh.y + joints.rh.y)*0.5));
-        const currUpperArmL = Math.hypot(joints.le.x - joints.ls.x, joints.le.y - joints.ls.y);
-        const currForearmL = Math.hypot(joints.lw.x - joints.le.x, joints.lw.y - joints.le.y);
-        const currUpperArmR = Math.hypot(joints.re.x - joints.rs.x, joints.re.y - joints.rs.y);
-        const currForearmR = Math.hypot(joints.rw.x - joints.re.x, joints.rw.y - joints.re.y);
+        const currUpperArmL = Math.hypot(joints.le.x - joints.ls.x, joints.le.y - joints.ls.y, (joints.le.z||0) - (joints.ls.z||0));
+        const currForearmL  = Math.hypot(joints.lw.x - joints.le.x, joints.lw.y - joints.le.y, (joints.lw.z||0) - (joints.le.z||0));
+        const currUpperArmR = Math.hypot(joints.re.x - joints.rs.x, joints.re.y - joints.rs.y, (joints.re.z||0) - (joints.rs.z||0));
+        const currForearmR  = Math.hypot(joints.rw.x - joints.re.x, joints.rw.y - joints.re.y, (joints.rw.z||0) - (joints.re.z||0));
         
-        if (currShoulderSpan < 50 || currTorso < 50) return;
+        if (currShoulderSpan < 50) return;
         
         if (this.sampleCount < this.TARGET_SAMPLES) {
           this.sampleCount++;
           const alpha = 1.0 / this.sampleCount;
           this.shoulderSpan = this.shoulderSpan * (1 - alpha) + currShoulderSpan * alpha;
-          this.torsoLength = this.torsoLength * (1 - alpha) + currTorso * alpha;
-          this.upperArmL = this.upperArmL * (1 - alpha) + currUpperArmL * alpha;
-          this.forearmL = this.forearmL * (1 - alpha) + currForearmL * alpha;
-          this.upperArmR = this.upperArmR * (1 - alpha) + currUpperArmR * alpha;
-          this.forearmR = this.forearmR * (1 - alpha) + currForearmR * alpha;
+          this.upperArmL    = this.upperArmL * (1 - alpha) + currUpperArmL * alpha;
+          this.forearmL     = this.forearmL * (1 - alpha) + currForearmL * alpha;
+          this.upperArmR    = this.upperArmR * (1 - alpha) + currUpperArmR * alpha;
+          this.forearmR     = this.forearmR * (1 - alpha) + currForearmR * alpha;
+          this.armLenL      = this.upperArmL + this.forearmL;
+          this.armLenR      = this.upperArmR + this.forearmR;
           
           const pct = Math.round((this.sampleCount / this.TARGET_SAMPLES) * 100);
-          if (btnCalibrate) btnCalibrate.innerText = `🎯 CALIB: ${pct}%`;
+          if (btnCalibrate) {
+            btnCalibrate.innerText = `🎯 CALIB: ${pct}%`;
+            btnCalibrate.style.color = '#facc15';
+            btnCalibrate.style.borderColor = 'rgba(250, 204, 21, 0.8)';
+          }
           if (this.sampleCount >= this.TARGET_SAMPLES) {
             this.locked = true;
             if (btnCalibrate) {
@@ -1424,12 +1438,13 @@
             }
           }
         } else {
-          // Continuous gentle tracking
+          // Continuous smooth adaptation
           this.shoulderSpan = this.shoulderSpan * 0.98 + currShoulderSpan * 0.02;
+          this.armLenL = this.armLenL * 0.98 + (currUpperArmL + currForearmL) * 0.02;
+          this.armLenR = this.armLenR * 0.98 + (currUpperArmR + currForearmR) * 0.02;
         }
         
-        // Depth scaling relative to user baseline
-        this.depthScale = Math.max(0.4, Math.min(2.5, currShoulderSpan / Math.max(80, this.shoulderSpan)));
+        this.depthScale = Math.max(0.5, Math.min(2.0, currShoulderSpan / Math.max(80, this.shoulderSpan)));
       },
       
       reset() {
@@ -1441,7 +1456,6 @@
         }
       }
     };
-
     // -------------------------------------------------------------------------
     // 3D BODY ROTATION & DIRECTION DETECTION ENGINE
     // -------------------------------------------------------------------------
@@ -2166,41 +2180,28 @@
           }
         }
 
-        // 2. Advance Independent Left & Right Arm Strike Projectiles (0.75s snappy cinematic punch & whip return)
-        if (ringsState.left.strikeActive) {
-          ringsState.left.strikeProgress += 0.024;
-          if (ringsState.left.strikeProgress >= 1.0) ringsState.left.strikeActive = false;
-        }
-        if (ringsState.right.strikeActive) {
-          ringsState.right.strikeProgress += 0.024;
-          if (ringsState.right.strikeProgress >= 1.0) ringsState.right.strikeActive = false;
-        }
-
         // ---------------------------------------------------------------------
-        // INDEPENDENT 5-RING DUAL-ARM MARTIAL ARTS RECOGNITION
-        // Zero Autonomous Action | Each Hand Controls Its Own 5 Rings!
+        // INDEPENDENT 5-RING MARTIAL ARTS RECOGNITION & HAND-BOUND TETHER
         // ---------------------------------------------------------------------
         if (!mocapJoints.detected) {
           ringsState._histL = [];
           ringsState._histR = [];
           ringsState.mandalaShieldActive = false;
-          ringsState.left.latched = false;
-          ringsState.right.latched = false;
         } else {
           if (!ringsState._histL) ringsState._histL = [];
           if (!ringsState._histR) ringsState._histR = [];
           const nowMs = performance.now();
 
-          // 3D Euclidean metrics for each arm
+          // 3D Euclidean distances for each arm
           const armForeL = Math.hypot(poseCurrent.lw.x - poseCurrent.le.x, poseCurrent.lw.y - poseCurrent.le.y, (poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0));
           const armUpL   = Math.hypot(poseCurrent.le.x - poseCurrent.ls.x, poseCurrent.le.y - poseCurrent.ls.y, (poseCurrent.le.z || 0) - (poseCurrent.ls.z || 0));
-          const totalArmL = (armForeL + armUpL) || 180;
+          const totalArmL = (armForeL + armUpL) || autoCalib.armLenL || 230;
           const reach3dL = Math.hypot(poseCurrent.lw.x - poseCurrent.ls.x, poseCurrent.lw.y - poseCurrent.ls.y, (poseCurrent.lw.z || 0) - (poseCurrent.ls.z || 0));
           const extRatioL = reach3dL / totalArmL;
 
           const armForeR = Math.hypot(poseCurrent.rw.x - poseCurrent.re.x, poseCurrent.rw.y - poseCurrent.re.y, (poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0));
           const armUpR   = Math.hypot(poseCurrent.re.x - poseCurrent.rs.x, poseCurrent.re.y - poseCurrent.rs.y, (poseCurrent.re.z || 0) - (poseCurrent.rs.z || 0));
-          const totalArmR = (armForeR + armUpR) || 180;
+          const totalArmR = (armForeR + armUpR) || autoCalib.armLenR || 230;
           const reach3dR = Math.hypot(poseCurrent.rw.x - poseCurrent.rs.x, poseCurrent.rw.y - poseCurrent.rs.y, (poseCurrent.rw.z || 0) - (poseCurrent.rs.z || 0));
           const extRatioR = reach3dR / totalArmR;
 
@@ -2223,29 +2224,22 @@
 
           const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
 
-          // Independent Strike Zones: Hand is in front of torso, not hanging at hip
+          // Strike Zones: Hands must be in active chest/torso zone, not hanging down at lap
           const inStrikeZoneL = (poseCurrent.lw.y < hipsY - 25) && (poseCurrent.lw.y > poseCurrent.ls.y - 120);
           const inStrikeZoneR = (poseCurrent.rw.y < hipsY - 25) && (poseCurrent.rw.y > poseCurrent.rs.y - 120);
 
           // Arm Extension & Forward Drive Checks (tuned for real-world seated webcam)
-          const isExtendedL = (extRatioL >= 0.72);
-          const isDrivingL = (reachVelL > 110 || forwardDeltaZL > 16 || winVelL > 175);
+          const isDrivingOutL = (extRatioL >= 0.68) && (reachVelL > 85 || forwardDeltaZL > 12 || winVelL > 150);
+          const isDrivingOutR = (extRatioR >= 0.68) && (reachVelR > 85 || forwardDeltaZR > 12 || winVelR > 150);
 
-          const isExtendedR = (extRatioR >= 0.72);
-          const isDrivingR = (reachVelR > 110 || forwardDeltaZR > 16 || winVelR > 175);
-
-          // Reset latches when arms pull back to guard
-          if (extRatioL < 0.65) ringsState.left.latched = false;
-          if (extRatioR < 0.65) ringsState.right.latched = false;
-
-          // GESTURE 1: TAI CHI MANDALA 10-RING DEFENSE SHIELD (Crossed Wrists across chest)
+          // 1. TAI CHI 10-RING MANDALA SHIELD (Crossed wrists across chest)
           const chestZone = (poseCurrent.lw.y < torsoMidY + 45) && (poseCurrent.rw.y < torsoMidY + 45) &&
                             (poseCurrent.lw.y > poseCurrent.ls.y - 85) && (poseCurrent.rw.y > poseCurrent.rs.y - 85);
           const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x - 20) && (wristDist < 240);
           const touchingChest = (wristDist < 135) && chestZone;
           const isShieldTrigger = (wristsCrossed || touchingChest) && chestZone && !ringsState.left.summonActive && !ringsState.right.summonActive;
 
-          if (isShieldTrigger && !ringsState.mandalaShieldActive && !ringsState.left.strikeActive && !ringsState.right.strikeActive) {
+          if (isShieldTrigger && !ringsState.mandalaShieldActive) {
             ringsState.mandalaShieldActive = true;
             playRingClangSFX(1.3);
             showQiToast("🛡️ TAI CHI MANDALA: 10 RINGS DEFENSE SHIELD!");
@@ -2254,30 +2248,110 @@
           }
 
           if (!ringsState.mandalaShieldActive) {
-            // GESTURE 2: DUAL PALM THRUST (Both arms extending forward together)
-            const isDualThrust = isExtendedL && isExtendedR && isDrivingL && isDrivingR && (wristDist > 160);
-            if (isDualThrust && !ringsState.left.strikeActive && !ringsState.right.strikeActive && !ringsState.left.latched && !ringsState.right.latched) {
+            // 2. DUAL PALM THRUST (Both arms extending forward together)
+            const isDualThrust = isDrivingOutL && isDrivingOutR && (wristDist > 160);
+            if (isDualThrust && !ringsState.left.isStriking && !ringsState.right.isStriking) {
               ringsState.triggerDualThrust();
             } else {
-              // GESTURE 3: INDEPENDENT LEFT HAND PUNCH (Fires Left 5 Rings only!)
-              if (inStrikeZoneL && isExtendedL && isDrivingL && !ringsState.left.latched && !ringsState.left.strikeActive) {
+              // 3. INDEPENDENT LEFT HAND PUNCH (Fires Left 5 Rings only!)
+              if (inStrikeZoneL && isDrivingOutL && !ringsState.left.isStriking) {
                 ringsState.triggerStrikeLeft();
               }
 
-              // GESTURE 4: INDEPENDENT RIGHT HAND PUNCH (Fires Right 5 Rings only!)
-              if (inStrikeZoneR && isExtendedR && isDrivingR && !ringsState.right.latched && !ringsState.right.strikeActive) {
+              // 4. INDEPENDENT RIGHT HAND PUNCH (Fires Right 5 Rings only!)
+              if (inStrikeZoneR && isDrivingOutR && !ringsState.right.isStriking) {
                 ringsState.triggerStrikeRight();
               }
             }
           }
 
-          // GESTURE 5: QI CLAP MODE SHIFT
+          // 5. QI CLAP MODE SHIFT
           if (wristDist < 85 && !ringsState._clapCooldown) {
             ringsState._clapCooldown = true;
             ringsState.toggleMode();
             playRingClangSFX(1.8);
             showQiToast(ringsState.mode === 'SHANG_CHI_GOLD' ? "🔥 QI: TA LO GOLDEN DRAGON" : "⚡ QI: WENWU COSMIC LIGHTNING");
             setTimeout(() => { ringsState._clapCooldown = false; }, 900);
+          }
+
+          // ===================================================================
+          // 6. REAL-TIME HAND-BOUND TETHER & AUTOMATIC PULL-BACK KINEMATICS
+          // If the user pulls back their hand, the rings return automatically!
+          // ===================================================================
+
+          // --- LEFT HAND PULL-BACK UPDATE ---
+          if (ringsState.left.isStriking) {
+            if (reach3dL > ringsState.left.peakReach) {
+              ringsState.left.peakReach = reach3dL;
+            }
+
+            // DETECT PULL-BACK: Negative reach velocity, negative forward Z, or reach dropping below peak
+            const isPullingBackL = (reachVelL < -45) || (forwardDeltaZL < -10) || (reach3dL < ringsState.left.peakReach - 20) || (extRatioL < 0.62);
+
+            if (isPullingBackL) {
+              ringsState.left.isRetracting = true;
+            }
+
+            if (ringsState.left.isRetracting) {
+              // Magnetically whip back to hand! The faster you pull back, the faster they return!
+              const returnSpeed = Math.max(38, Math.abs(reachVelL) * 0.10);
+              ringsState.left.flightDist = Math.max(0, ringsState.left.flightDist - returnSpeed);
+
+              if (ringsState.left.flightDist <= 5) {
+                ringsState.left.flightDist = 0.0;
+                ringsState.left.isStriking = false;
+                ringsState.left.isRetracting = false;
+                ringsState.left.peakReach = 0.0;
+                playRingClangSFX(1.4);
+                showQiToast("⚡ LEFT 5 RINGS: SNAPPED BACK TO WRIST!");
+              }
+            } else {
+              // Hand is pushing out or holding forward -> Rings project out ahead of fist!
+              const punchRatio = Math.max(0, (extRatioL - 0.58) / 0.32);
+              const targetDist = 120 + punchRatio * 440;
+              ringsState.left.flightDist += (targetDist - ringsState.left.flightDist) * 0.35;
+
+              ringsState.left.holdFrames = (ringsState.left.holdFrames || 0) + 1;
+              if (ringsState.left.holdFrames > 90) { // Safety auto-retract after 3s
+                ringsState.left.isRetracting = true;
+              }
+            }
+          }
+
+          // --- RIGHT HAND PULL-BACK UPDATE ---
+          if (ringsState.right.isStriking) {
+            if (reach3dR > ringsState.right.peakReach) {
+              ringsState.right.peakReach = reach3dR;
+            }
+
+            const isPullingBackR = (reachVelR < -45) || (forwardDeltaZR < -10) || (reach3dR < ringsState.right.peakReach - 20) || (extRatioR < 0.62);
+
+            if (isPullingBackR) {
+              ringsState.right.isRetracting = true;
+            }
+
+            if (ringsState.right.isRetracting) {
+              const returnSpeed = Math.max(38, Math.abs(reachVelR) * 0.10);
+              ringsState.right.flightDist = Math.max(0, ringsState.right.flightDist - returnSpeed);
+
+              if (ringsState.right.flightDist <= 5) {
+                ringsState.right.flightDist = 0.0;
+                ringsState.right.isStriking = false;
+                ringsState.right.isRetracting = false;
+                ringsState.right.peakReach = 0.0;
+                playRingClangSFX(1.4);
+                showQiToast("⚡ RIGHT 5 RINGS: SNAPPED BACK TO WRIST!");
+              }
+            } else {
+              const punchRatio = Math.max(0, (extRatioR - 0.58) / 0.32);
+              const targetDist = 120 + punchRatio * 440;
+              ringsState.right.flightDist += (targetDist - ringsState.right.flightDist) * 0.35;
+
+              ringsState.right.holdFrames = (ringsState.right.holdFrames || 0) + 1;
+              if (ringsState.right.holdFrames > 90) {
+                ringsState.right.isRetracting = true;
+              }
+            }
           }
         }
 
@@ -2310,7 +2384,6 @@
         const shieldMidY = (poseCurrent.lw.y + poseCurrent.rw.y) * 0.5;
 
         arms.forEach(arm => {
-          // Forearm 3D Geometry
           const fdx = arm.wrist.x - arm.elbow.x;
           const fdy = arm.elbow.y - arm.wrist.y;
           const fdz = (arm.wrist.z || 0) - (arm.elbow.z || 0);
@@ -2341,7 +2414,7 @@
           }
 
           const activeHandOrientation = armDir3D.clone().lerp(safeHandDir, 0.45).normalize();
-          const punchDir = arm.hand.strikeActive ? arm.hand.strikeDir : safeHandDir;
+          const punchDir = (arm.hand.flightDist > 0) ? arm.hand.strikeDir : safeHandDir;
 
           const baseRingRad = Math.max(26, refArmLen * 0.175);
           const ringSpacing = Math.max(11, baseRingRad * 0.38);
@@ -2361,6 +2434,10 @@
             const targetSlotX = arm.wrist.x - uForearmX * distFromWrist;
             const targetSlotY = arm.wrist.y - uForearmY * distFromWrist;
             const targetSlotZ = (arm.wrist.z || 0) - uForearmZ * distFromWrist + 15;
+
+            const fistX = arm.wrist.x + safeHandDir.x * (handLen * 0.95);
+            const fistY = arm.wrist.y - safeHandDir.y * (handLen * 0.95);
+            const fistZ = (arm.wrist.z || 0) + 18;
 
             const taperScale = 1.04 - k * 0.02;
             const qiBreath = Math.sin(timeVal * 2.5 + ringIdx * 0.4) * 0.02;
@@ -2429,39 +2506,15 @@
                 targetZ = invF * invF * origin.z + 2 * invF * easeFlight * ctrlZ + easeFlight * easeFlight * tipZ;
                 targetScale = baseRingRad * 1.15;
                 targetDir.copy(safeHandDir);
-
-                hudCtx.save();
-                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 185, 30, 0.75)' : 'rgba(0, 220, 255, 0.75)';
-                hudCtx.lineWidth = 3.0;
-                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ff7700' : '#0099ff';
-                hudCtx.shadowBlur = 12;
-                hudCtx.beginPath();
-                hudCtx.moveTo(origin.x, origin.y);
-                hudCtx.quadraticCurveTo(ctrlX, ctrlY, targetX, targetY);
-                hudCtx.stroke();
-                hudCtx.restore();
-
               } else if (u < 1.0) {
                 const subU = (u - 0.42) / 0.58;
                 const easeSlide = subU * subU * (3.0 - 2.0 * subU);
                 targetX = tipX + (targetSlotX - tipX) * easeSlide;
                 targetY = tipY + (targetSlotY - tipY) * easeSlide;
                 targetZ = tipZ + (targetSlotZ - tipZ) * easeSlide;
-
                 const handBulge = Math.sin(easeSlide * Math.PI) * 0.48;
                 targetScale = baseRingRad * (taperScale + handBulge);
                 targetDir.lerpVectors(safeHandDir, activeHandOrientation, easeSlide).normalize();
-
-                hudCtx.save();
-                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 230, 120, 0.90)' : 'rgba(140, 240, 255, 0.90)';
-                hudCtx.lineWidth = 4.0;
-                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ffaa00' : '#00d4ff';
-                hudCtx.shadowBlur = 16;
-                hudCtx.beginPath();
-                hudCtx.arc(targetX, targetY, targetScale * 0.6, 0, Math.PI * 2);
-                hudCtx.stroke();
-                hudCtx.restore();
-
               } else {
                 targetX = targetSlotX;
                 targetY = targetSlotY;
@@ -2470,73 +2523,45 @@
                 targetDir.copy(activeHandOrientation);
               }
 
-            } else if (arm.hand.strikeActive) {
-              // Kinetic 5-Ring Punch Blast for THIS Arm!
-              const p = arm.hand.strikeProgress;
-              const launchStagger = (4 - k) * 0.04;
-              const maxDist = 520 + k * 35;
+            } else if (arm.hand.flightDist > 0) {
+              // DYNAMIC HAND-BOUND STRIKE / HOVER / AUTO-RETRACTION
+              const fDist = arm.hand.flightDist;
+              const stagger = (4 - k) * 16;
+              const ringDist = Math.max(0, fDist - stagger);
 
-              const fistX = arm.wrist.x + safeHandDir.x * (handLen * 0.95);
-              const fistY = arm.wrist.y - safeHandDir.y * (handLen * 0.95);
-              const fistZ = (arm.wrist.z || 0) + 18;
-
-              if (p < 0.5) {
-                const u = p / 0.5;
-                const ringU = Math.min(1.0, Math.max(0.0, (u - launchStagger) / (1.0 - 0.16)));
-
-                if (ringU < 0.28) {
-                  const subU = ringU / 0.28;
-                  targetX = targetSlotX + (fistX - targetSlotX) * subU;
-                  targetY = targetSlotY + (fistY - targetSlotY) * subU;
-                  targetZ = targetSlotZ + (fistZ - targetSlotZ) * subU;
-                  targetScale = baseRingRad * (taperScale + Math.sin(subU * Math.PI) * 0.25);
-                  targetDir.lerpVectors(activeHandOrientation, punchDir, subU).normalize();
-                } else {
-                  const subU = (ringU - 0.28) / 0.72;
-                  const forwardDist = Math.sin(subU * Math.PI * 0.5) * maxDist;
-                  const spiralAngle = timeVal * 14.0 + k * 1.2;
-                  targetX = fistX + punchDir.x * forwardDist + Math.cos(spiralAngle) * 22;
-                  targetY = fistY - punchDir.y * forwardDist + Math.sin(spiralAngle) * 22;
-                  targetZ = fistZ + punchDir.z * forwardDist + Math.sin(spiralAngle * 2) * 18;
-                  targetScale = baseRingRad * (1.0 + (forwardDist / maxDist) * 0.30);
-                  targetDir.copy(punchDir);
-
-                  hudCtx.save();
-                  hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 190, 40, 0.85)' : 'rgba(0, 220, 255, 0.85)';
-                  hudCtx.lineWidth = 3.5;
-                  hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ff6600' : '#00a0ff';
-                  hudCtx.shadowBlur = 14;
-                  hudCtx.beginPath();
-                  hudCtx.moveTo(fistX, fistY);
-                  hudCtx.lineTo(targetX, targetY);
-                  hudCtx.stroke();
-                  hudCtx.restore();
-                }
+              if (ringDist <= 35) {
+                // Sliding forward over wrist and knuckles
+                const subU = ringDist / 35.0;
+                targetX = targetSlotX + (fistX - targetSlotX) * subU;
+                targetY = targetSlotY + (fistY - targetSlotY) * subU;
+                targetZ = targetSlotZ + (fistZ - targetSlotZ) * subU;
+                targetScale = baseRingRad * (taperScale + Math.sin(subU * Math.PI) * 0.25);
+                targetDir.lerpVectors(activeHandOrientation, punchDir, subU).normalize();
               } else {
-                const u = (p - 0.5) / 0.5;
-                const ringU = Math.min(1.0, Math.max(0.0, (u - k * 0.04) / (1.0 - 0.16)));
+                // Flying in front of fist with kinetic spiral trail
+                const projDist = ringDist - 35;
+                const spiralAngle = timeVal * 14.0 + k * 1.2;
+                targetX = fistX + punchDir.x * projDist + Math.cos(spiralAngle) * 20;
+                targetY = fistY - punchDir.y * projDist + Math.sin(spiralAngle) * 20;
+                targetZ = fistZ + punchDir.z * projDist + Math.sin(spiralAngle * 2) * 16;
+                targetScale = baseRingRad * (1.0 + Math.min(0.35, (projDist / 450.0) * 0.35));
+                targetDir.copy(punchDir);
 
-                if (ringU < 0.72) {
-                  const subU = ringU / 0.72;
-                  const forwardDist = Math.cos(subU * Math.PI * 0.5) * maxDist;
-                  const spiralAngle = timeVal * 12.0 + k * 1.2;
-                  targetX = fistX + punchDir.x * forwardDist + Math.cos(spiralAngle) * 16;
-                  targetY = fistY - punchDir.y * forwardDist + Math.sin(spiralAngle) * 16;
-                  targetZ = fistZ + punchDir.z * forwardDist;
-                  targetScale = baseRingRad * (1.0 + (forwardDist / maxDist) * 0.25);
-                  targetDir.copy(punchDir);
-                } else {
-                  const subU = (ringU - 0.72) / 0.28;
-                  targetX = fistX + (targetSlotX - fistX) * subU;
-                  targetY = fistY + (targetSlotY - fistY) * subU;
-                  targetZ = fistZ + (targetSlotZ - fistZ) * subU;
-                  targetScale = baseRingRad * (1.20 * (1.0 - subU) + taperScale * subU);
-                  targetDir.lerpVectors(punchDir, activeHandOrientation, subU).normalize();
-                }
+                // Golden plasma lightning connecting rings to knuckles
+                hudCtx.save();
+                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 190, 40, 0.85)' : 'rgba(0, 220, 255, 0.85)';
+                hudCtx.lineWidth = 3.5;
+                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ff6600' : '#00a0ff';
+                hudCtx.shadowBlur = 14;
+                hudCtx.beginPath();
+                hudCtx.moveTo(fistX, fistY);
+                hudCtx.lineTo(targetX, targetY);
+                hudCtx.stroke();
+                hudCtx.restore();
               }
 
             } else {
-              // SECURELY LOCKED ON FOREARM (Wrist crease slot)
+              // 1:1 ANCHORED AT WRIST CREASE
               targetX = targetSlotX;
               targetY = targetSlotY;
               targetZ = targetSlotZ;
@@ -2544,7 +2569,7 @@
               targetDir.copy(activeHandOrientation);
             }
 
-            // Snappy 1:1 Lerp Transform onto Three.js Mesh
+            // Snappy Lerp onto Three.js Mesh
             const threeTargetX = targetX - cxHalf;
             const threeTargetY = cyHalf - targetY;
             const threeTargetZ = targetZ;
