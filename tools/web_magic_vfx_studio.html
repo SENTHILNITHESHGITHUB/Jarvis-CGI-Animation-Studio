@@ -248,6 +248,7 @@
       <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
       <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
       <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.5); color:#38bdf8;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: OFF</div>
+      <div class="badge badge-interactive" id="btnOmniRoute" style="background:rgba(99, 102, 241, 0.18); border-color:rgba(99, 102, 241, 0.6); color:#a5b4fc;" title="OmniRoute AI Gateway Online (Port 20128) - Click to trigger AI Director Cue">🌐 OMNIROUTE: ONLINE (20128)</div>
       <div class="badge badge-interactive" id="btnSource" style="background:rgba(234, 179, 8, 0.15); border-color:rgba(234, 179, 8, 0.5); color:#facc15;" title="Switch Live Webcam / 4K Demo Shot">📹 SOURCE: LIVE CAM</div>
       <div class="badge badge-interactive" id="btnAudio" style="background:rgba(147, 51, 234, 0.15); border-color:rgba(147, 51, 234, 0.5); color:#c084fc;" title="Toggle Cinematic SFX Audio">🔊 SFX: OFF</div>
       <div class="badge badge-interactive" id="btnRecord" style="background:rgba(239, 68, 68, 0.15); border-color:rgba(239, 68, 68, 0.5); color:#f87171;" title="Record 1080p Cinema Video">🔴 REC: IDLE</div>
@@ -258,6 +259,10 @@
   </div>
 
   <!-- Interactive Stance Dock -->
+  <div id="omniDirectorToast" style="display:none; position:fixed; bottom:82px; left:50%; transform:translateX(-50%); background:rgba(15, 23, 42, 0.92); border:1px solid rgba(165, 180, 252, 0.5); color:#e0e7ff; padding:9px 22px; border-radius:30px; font-size:12px; font-weight:700; z-index:100; backdrop-filter:blur(16px); box-shadow:0 12px 35px rgba(99,102,241,0.35); gap:8px; align-items:center;">
+    <span style="font-size:14px;">🎬</span>
+    <span id="omniDirectorText">OMNIROUTE AI DIRECTOR: READY</span>
+  </div>
   <div class="hud-dock" id="hudDock">
     <button class="dock-pill pill-gold active" data-vfx="SHANG_CHI">🐉 SHANG-CHI (TEN RINGS)</button>
     <button class="dock-pill pill-fire" id="btnSummonRings">⚡ SUMMON RINGS (MOVIE ENTRY)</button>
@@ -2460,6 +2465,78 @@
         }
       }
     }
+
+    // -------------------------------------------------------------------------
+    // OMNIROUTE LOCAL AI DIRECTOR & VOICE CHOREOGRAPHY ENGINE (PORT 20128)
+    // -------------------------------------------------------------------------
+    const OMNIROUTE_CONFIG = {
+      baseUrl: "http://127.0.0.1:20128",
+      apiKey: "sk-cc4d18884ff72840-bad83d-0512c75e",
+      isOnline: false,
+      lastStanceAnnounced: null
+    };
+
+    const omniCues = {
+      SHANG_CHI: "Channel Ta Lo Qi through the ten rings! Hold the dragon stance!",
+      BRAHMASTRA: "Astral fire ignited! Channel the power of Agnyastra!",
+      IRON_MAN: "Flight telemetry locked! Auxiliary repulsors standing by!",
+      DOCTOR_STRANGE: "Eldritch geometry anchored! Mirror dimension open!",
+      OMNI_OVERDRIVE: "MAXIMUM OMNI OVERDRIVE! All mystic weapons synchronized!"
+    };
+
+    function triggerOmniDirector(stance) {
+      const cue = omniCues[stance] || "Maintain combat stance! Motion capture tracking locked!";
+      const toast = document.getElementById('omniDirectorToast');
+      const text = document.getElementById('omniDirectorText');
+      if (toast && text) {
+        text.innerText = `OMNIROUTE AI DIRECTOR: "${cue}"`;
+        toast.style.display = 'flex';
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 4500);
+      }
+
+      // Voice synthesis
+      if ('speechSynthesis' in window && soundEnabled) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(cue);
+        utter.rate = 1.05;
+        utter.pitch = 0.95;
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    // Ping OmniRoute on Port 20128
+    fetch("http://127.0.0.1:20128/", { method: "HEAD", mode: "no-cors" })
+      .then(() => {
+        OMNIROUTE_CONFIG.isOnline = true;
+        const badge = document.getElementById('btnOmniRoute');
+        if (badge) {
+          badge.innerText = "🌐 OMNIROUTE: ONLINE (20128)";
+          badge.style.background = "rgba(99, 102, 241, 0.25)";
+          badge.style.borderColor = "rgba(99, 102, 241, 0.8)";
+          badge.style.color = "#c7d2fe";
+        }
+      })
+      .catch(() => {
+        const badge = document.getElementById('btnOmniRoute');
+        if (badge) {
+          badge.innerText = "🌐 OMNIROUTE: LOCAL (20128)";
+        }
+      });
+
+    const btnOmniRoute = document.getElementById('btnOmniRoute');
+    if (btnOmniRoute) {
+      btnOmniRoute.addEventListener('click', () => {
+        triggerOmniDirector(activeStance);
+      });
+    }
+
+    // Hotkey 'o' or 'O' triggers OmniRoute Director
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'o' || e.key === 'O') {
+        triggerOmniDirector(activeStance);
+      }
+    });
 
     // Launch camera on startup
     startCamera();
