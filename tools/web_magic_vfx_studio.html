@@ -1578,14 +1578,16 @@
       hudCtx.restore();
     }
 
-    // Draw Holographic Biomechanical MoCap Rig Overlay
+    // Draw Holographic Biomechanical MoCap Rig Overlay with Live 3D Vision Telemetry
     function drawMoCapSkeleton(joints) {
       if (!showSkeleton) return;
       hudCtx.save();
-      hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
-      hudCtx.lineWidth = 1.8;
+
+      // Cybernetic Bones Glow
+      hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.75)';
+      hudCtx.lineWidth = 2.4;
       hudCtx.shadowColor = '#00f0ff';
-      hudCtx.shadowBlur = 8;
+      hudCtx.shadowBlur = 12;
 
       const bones = [
         ['ls', 'rs'], ['ls', 'le'], ['le', 'lw'], ['lw', 'lindex'],
@@ -1605,15 +1607,81 @@
         }
       });
 
-      // Joint Nodes
+      // Key Joints Highlight & 3D Telemetry Readouts
+      const keyLabels = {
+        nose: 'FACE TRACK',
+        ls: 'L_SHOULDER',
+        rs: 'R_SHOULDER',
+        le: 'L_ELBOW',
+        re: 'R_ELBOW',
+        lw: 'L_WRIST (TEN RINGS)',
+        rw: 'R_WRIST (TEN RINGS)',
+        spine: 'SPINE CORE'
+      };
+
       for (const k in joints) {
         if (k === 'detected' || typeof joints[k] !== 'object') continue;
         const pt = joints[k];
-        hudCtx.fillStyle = '#00f0ff';
+        const isWrist = (k === 'lw' || k === 'rw');
+        const isElbow = (k === 'le' || k === 're');
+
+        // Outer pulsing ring
+        hudCtx.strokeStyle = isWrist ? '#f59e0b' : '#00f0ff';
+        hudCtx.lineWidth = 1.5;
         hudCtx.beginPath();
-        hudCtx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        hudCtx.arc(pt.x, pt.y, isWrist ? 9 : 6, 0, Math.PI * 2);
+        hudCtx.stroke();
+
+        // Inner solid node
+        hudCtx.fillStyle = isWrist ? '#fbbf24' : '#38bdf8';
+        hudCtx.beginPath();
+        hudCtx.arc(pt.x, pt.y, isWrist ? 4 : 3, 0, Math.PI * 2);
         hudCtx.fill();
+
+        // High-Tech Micro HUD Labels
+        if (keyLabels[k]) {
+          hudCtx.font = 'bold 9px monospace';
+          hudCtx.fillStyle = isWrist ? '#fde047' : 'rgba(186, 230, 253, 0.9)';
+          hudCtx.fillText(`${keyLabels[k]} [Z:${(pt.z || 0).toFixed(1)}]`, pt.x + 12, pt.y - 4);
+        }
       }
+
+      // Draw Forearm Orientation Vectors (Where Ten Rings Align)
+      if (joints.le && joints.lw) {
+        const dxL = joints.lw.x - joints.le.x;
+        const dyL = joints.lw.y - joints.le.y;
+        hudCtx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
+        hudCtx.lineWidth = 2.0;
+        hudCtx.beginPath();
+        hudCtx.moveTo(joints.lw.x, joints.lw.y);
+        hudCtx.lineTo(joints.lw.x + dxL * 0.35, joints.lw.y + dyL * 0.35);
+        hudCtx.stroke();
+      }
+      if (joints.re && joints.rw) {
+        const dxR = joints.rw.x - joints.re.x;
+        const dyR = joints.rw.y - joints.re.y;
+        hudCtx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
+        hudCtx.lineWidth = 2.0;
+        hudCtx.beginPath();
+        hudCtx.moveTo(joints.rw.x, joints.rw.y);
+        hudCtx.lineTo(joints.rw.x + dxR * 0.35, joints.rw.y + dyR * 0.35);
+        hudCtx.stroke();
+      }
+
+      // On-Screen Vision HUD Capture Badge
+      hudCtx.fillStyle = 'rgba(10, 14, 26, 0.85)';
+      hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+      hudCtx.lineWidth = 1;
+      hudCtx.fillRect(20, window.innerHeight - 150, 310, 52);
+      hudCtx.strokeRect(20, window.innerHeight - 150, 310, 52);
+
+      hudCtx.font = 'bold 11px monospace';
+      hudCtx.fillStyle = '#00f0ff';
+      hudCtx.fillText('AI VISION MOCAP CAPTURE: 33 JOINTS (60 FPS)', 30, window.innerHeight - 132);
+      hudCtx.font = '10px monospace';
+      hudCtx.fillStyle = '#94a3b8';
+      hudCtx.fillText(`BODY YAW: ${bodyOrientation.yawDeg}° | PITCH: ${bodyOrientation.pitchDeg}° | HEADING: ${bodyOrientation.turnDirection}`, 30, window.innerHeight - 114);
+
       hudCtx.restore();
     }
 
@@ -1687,6 +1755,22 @@
 
     function renderLoop() {
       if (window.location.search.includes('inspect')) togglePropInspector(true);
+    if (window.location.search.includes('skeleton')) {
+      showSkeleton = true;
+      if (btnSkeleton) {
+        btnSkeleton.innerText = "🦴 SKELETON: ON";
+        btnSkeleton.style.opacity = "1.0";
+        btnSkeleton.style.borderColor = "#00f0ff";
+      }
+    }
+    if (window.location.search.includes('mesh')) {
+      showMeshMoCap = true;
+      if (btnMeshMoCap) {
+        btnMeshMoCap.innerText = "🛡️ 3D MESH: ON";
+        btnMeshMoCap.style.opacity = "1.0";
+      }
+      if (warriorGroup) warriorGroup.visible = true;
+    }
     requestAnimationFrame(renderLoop);
       timeVal += 0.035;
       frameCount++;
@@ -2460,7 +2544,7 @@
       });
     }
 
-    // Keyboard Shortcuts: R for Ring Summon, T for Qi Mode, I for 3D Prop Inspect, ESC to close
+    // Keyboard Shortcuts: R=Summon, T=Qi Mode, I=Inspect, K=Skeleton, M=3D Mesh, ESC=Exit Inspect
     window.addEventListener('keydown', (e) => {
       if (e.key === 'r' || e.key === 'R') {
         ringsState.triggerSummon();
@@ -2468,6 +2552,19 @@
         ringsState.toggleMode();
       } else if (e.key === 'i' || e.key === 'I') {
         togglePropInspector();
+      } else if (e.key === 'k' || e.key === 'K') {
+        showSkeleton = !showSkeleton;
+        if (btnSkeleton) {
+          btnSkeleton.innerText = showSkeleton ? "🦴 SKELETON: ON" : "🦴 SKELETON: OFF";
+          btnSkeleton.style.opacity = showSkeleton ? "1.0" : "0.6";
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        showMeshMoCap = !showMeshMoCap;
+        if (btnMeshMoCap) {
+          btnMeshMoCap.innerText = showMeshMoCap ? "🛡️ 3D MESH: ON" : "🛡️ 3D MESH: OFF";
+          btnMeshMoCap.style.opacity = showMeshMoCap ? "1.0" : "0.5";
+        }
+        if (warriorGroup) warriorGroup.visible = showMeshMoCap;
       } else if (e.key === 'Escape') {
         if (typeof isPropInspectActive !== 'undefined' && isPropInspectActive) togglePropInspector(false);
       }
