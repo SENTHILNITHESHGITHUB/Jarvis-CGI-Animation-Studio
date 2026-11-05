@@ -243,7 +243,7 @@
     <div class="telemetry">
       <div class="badge badge-pilot">PILOT: NITHESH</div>
       <div class="badge badge-lock" id="hudLock">MOCAP: SEARCHING...</div>
-      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.2); border-color:rgba(245, 158, 11, 0.7); color:#fbbf24;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior">🛡️ 3D MESH: ON</div>
+      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.35); border-color:#f59e0b; color:#fde047; font-weight:800;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior (Key [M])">🛡️ 3D MESH: ON</div>
       <div class="badge badge-interactive" id="btnCalibrate" style="background:rgba(16, 185, 129, 0.2); border-color:rgba(16, 185, 129, 0.7); color:#34d399;" title="Auto Proportion Calibration Status">🎯 CALIB: 100%</div>
       <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
       <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
@@ -340,7 +340,7 @@
     const heatTurb = document.getElementById('heatTurb');
 
     let showSkeleton = false;
-    let showMeshMoCap = false;
+    let showMeshMoCap = true;
 
     if (btnSkeleton) {
       btnSkeleton.innerText = "🦴 SKELETON: OFF";
@@ -1347,35 +1347,45 @@
     const warriorGroup = new THREE.Group();
     scene.add(warriorGroup);
 
-    // High-End PBR Shaders
+    // Master Cinematic Nanotech MoCap Suit PBR Materials (Vibrant & Highly Visible)
     const matCarapace = new THREE.MeshStandardMaterial({
-      color: 0x141824,
-      metalness: 0.88,
-      roughness: 0.24
+      color: 0x1a2332, // Sleek brushed gunmetal titanium
+      metalness: 0.92,
+      roughness: 0.20,
+      emissive: 0x061424,
+      emissiveIntensity: 0.35,
+      envMapIntensity: 2.2
     });
     const matAstraGold = new THREE.MeshStandardMaterial({
-      color: 0xf59e0b,
-      metalness: 0.95,
-      roughness: 0.18,
+      color: 0xdf9824, // Authentic Ta Lo brushed antique gold armor trim
+      metalness: 0.96,
+      roughness: 0.16,
       emissive: 0x78350f,
-      emissiveIntensity: 0.45
+      emissiveIntensity: 0.45,
+      envMapIntensity: 2.4
     });
     const matRubyCarapace = new THREE.MeshStandardMaterial({
-      color: 0x991b1b,
-      metalness: 0.82,
-      roughness: 0.32
+      color: 0x222e42, // Ergonomic deep cobalt-slate muscular casing
+      metalness: 0.88,
+      roughness: 0.24,
+      emissive: 0x0c1a2e,
+      emissiveIntensity: 0.30,
+      envMapIntensity: 1.8
     });
     const matJointBall = new THREE.MeshStandardMaterial({
-      color: 0x0a0d14,
+      color: 0x00f0ff, // Glowing cyan cybernetic fusion joint nodes
       metalness: 0.70,
-      roughness: 0.45
+      roughness: 0.15,
+      emissive: 0x00c8e6,
+      emissiveIntensity: 1.4,
+      envMapIntensity: 2.5
     });
     const matSuryaCore = new THREE.MeshBasicMaterial({ color: 0xfff080 });
     const matVisorGlow = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
 
-    // Procedural Unit Geometries
-    const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 16);
-    const unitSphere = new THREE.SphereGeometry(1, 16, 16);
+    // Procedural Geometries (Higher Subdivision for Smooth Curves)
+    const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 24);
+    const unitSphere = new THREE.SphereGeometry(1, 24, 24);
     const unitBox = new THREE.BoxGeometry(1, 1, 1);
 
     function makeWarriorMesh(geom, mat) {
@@ -1384,29 +1394,37 @@
       return m;
     }
 
-    // Torso Components
-    const torsoMesh = makeWarriorMesh(unitCyl, matCarapace);
-    const arcReactorMesh = makeWarriorMesh(unitCyl, matSuryaCore);
-    const abdomenMesh = makeWarriorMesh(unitCyl, matCarapace);
-    const pelvisMesh = makeWarriorMesh(unitCyl, matRubyCarapace);
+    // Full Anatomical Torso Components
+    const collarboneMesh = makeWarriorMesh(unitCyl, matAstraGold);
+    const torsoMesh = makeWarriorMesh(unitCyl, matCarapace);      // Pectoral / Ribcage Carapace
+    const arcReactorMesh = makeWarriorMesh(unitCyl, matSuryaCore); // Chest Power Core
+    const abdomenMesh = makeWarriorMesh(unitCyl, matRubyCarapace); // Flexible Core Abdomen
+    const pelvisMesh = makeWarriorMesh(unitCyl, matAstraGold);     // Hip Girdle Pelvis
+    const neckMesh = makeWarriorMesh(unitCyl, matCarapace);        // Articulating Neck Cylinder
 
-    // Head & Helmet
+    // Head & Helmet with Cyber Visor
     const headGroup = new THREE.Group();
     const helmetSphere = new THREE.Mesh(unitSphere, matCarapace);
+    const helmetCrest = new THREE.Mesh(unitBox, matAstraGold);
+    helmetCrest.scale.set(0.24, 1.35, 1.1);
+    helmetCrest.position.set(0, 0.45, 0.1);
     const helmetVisor = new THREE.Mesh(unitBox, matVisorGlow);
     helmetVisor.scale.set(1.4, 0.28, 0.5);
     helmetVisor.position.set(0, 0, 0.85);
     headGroup.add(helmetSphere);
+    headGroup.add(helmetCrest);
     headGroup.add(helmetVisor);
     warriorGroup.add(headGroup);
 
-    // Joint Spheres (Watertight Articulation Ball Joints)
+    // 14 Watertight Articulation Ball Joints (Zero Crack/Gap Articulation)
+    const jNeck = makeWarriorMesh(unitSphere, matJointBall);
     const jShoulderL = makeWarriorMesh(unitSphere, matAstraGold);
     const jShoulderR = makeWarriorMesh(unitSphere, matAstraGold);
     const jElbowL = makeWarriorMesh(unitSphere, matJointBall);
     const jElbowR = makeWarriorMesh(unitSphere, matJointBall);
     const jWristL = makeWarriorMesh(unitSphere, matAstraGold);
     const jWristR = makeWarriorMesh(unitSphere, matAstraGold);
+    const jSpine = makeWarriorMesh(unitSphere, matJointBall);
     const jHipL = makeWarriorMesh(unitSphere, matJointBall);
     const jHipR = makeWarriorMesh(unitSphere, matJointBall);
     const jKneeL = makeWarriorMesh(unitSphere, matJointBall);
@@ -1414,7 +1432,7 @@
     const jAnkleL = makeWarriorMesh(unitSphere, matAstraGold);
     const jAnkleR = makeWarriorMesh(unitSphere, matAstraGold);
 
-    // Limb Cylinders (Segmented Armor Sleeves)
+    // Limb Segmented Armor Cylinders & Gauntlets
     const upperArmL = makeWarriorMesh(unitCyl, matRubyCarapace);
     const upperArmR = makeWarriorMesh(unitCyl, matRubyCarapace);
     const forearmL = makeWarriorMesh(unitCyl, matCarapace);
@@ -1460,27 +1478,56 @@
 
     // Full 33-Joint MoCap Rig Structure with 3D Z-coordinates (Chest-Level Martial Arts Guard)
     let mocapJoints = {
-      nose: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.26, z: 0 },
-      ls: { x: window.innerWidth * 0.38, y: window.innerHeight * 0.38, z: 0 },
-      rs: { x: window.innerWidth * 0.62, y: window.innerHeight * 0.38, z: 0 },
-      le: { x: window.innerWidth * 0.28, y: window.innerHeight * 0.50, z: 0 },
-      re: { x: window.innerWidth * 0.72, y: window.innerHeight * 0.50, z: 0 },
-      lw: { x: window.innerWidth * 0.36, y: window.innerHeight * 0.52, z: 0 },
-      rw: { x: window.innerWidth * 0.64, y: window.innerHeight * 0.52, z: 0 },
-      lindex: { x: window.innerWidth * 0.40, y: window.innerHeight * 0.48, z: 0 },
-      rindex: { x: window.innerWidth * 0.60, y: window.innerHeight * 0.48, z: 0 },
-      lh: { x: window.innerWidth * 0.42, y: window.innerHeight * 0.72, z: 0 },
-      rh: { x: window.innerWidth * 0.58, y: window.innerHeight * 0.72, z: 0 },
-      lknee: { x: window.innerWidth * 0.41, y: window.innerHeight * 0.88, z: 0 },
-      rknee: { x: window.innerWidth * 0.59, y: window.innerHeight * 0.88, z: 0 },
-      lankle: { x: window.innerWidth * 0.40, y: window.innerHeight * 0.98, z: 0 },
-      rankle: { x: window.innerWidth * 0.60, y: window.innerHeight * 0.98, z: 0 },
-      spine: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.46, z: 0 },
+      nose: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.32, z: 0 },
+      ls: { x: window.innerWidth * 0.40, y: window.innerHeight * 0.44, z: 0 },
+      rs: { x: window.innerWidth * 0.60, y: window.innerHeight * 0.44, z: 0 },
+      le: { x: window.innerWidth * 0.30, y: window.innerHeight * 0.56, z: 0 },
+      re: { x: window.innerWidth * 0.70, y: window.innerHeight * 0.56, z: 0 },
+      lw: { x: window.innerWidth * 0.38, y: window.innerHeight * 0.58, z: 0 },
+      rw: { x: window.innerWidth * 0.62, y: window.innerHeight * 0.58, z: 0 },
+      lindex: { x: window.innerWidth * 0.41, y: window.innerHeight * 0.54, z: 0 },
+      rindex: { x: window.innerWidth * 0.59, y: window.innerHeight * 0.54, z: 0 },
+      lh: { x: window.innerWidth * 0.44, y: window.innerHeight * 0.76, z: 0 },
+      rh: { x: window.innerWidth * 0.56, y: window.innerHeight * 0.76, z: 0 },
+      lknee: { x: window.innerWidth * 0.43, y: window.innerHeight * 0.90, z: 0 },
+      rknee: { x: window.innerWidth * 0.57, y: window.innerHeight * 0.90, z: 0 },
+      lankle: { x: window.innerWidth * 0.42, y: window.innerHeight * 0.98, z: 0 },
+      rankle: { x: window.innerWidth * 0.58, y: window.innerHeight * 0.98, z: 0 },
+      spine: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.52, z: 0 },
       detected: false
     };
 
     let poseCurrent = JSON.parse(JSON.stringify(mocapJoints));
     let prevLw = { x: mocapJoints.lw.x, y: mocapJoints.lw.y };
+
+    // Procedural Breathing & Martial Arts Guard Kinematics (Active When Searching for Camera)
+    function updateProceduralLifeMotion() {
+      if (!mocapJoints.detected) {
+        const breathe = Math.sin(timeVal * 2.2) * 6.5;
+        const swayX = Math.cos(timeVal * 1.1) * 10;
+        const guardArmL = Math.sin(timeVal * 1.6) * 12;
+        const guardArmR = -Math.cos(timeVal * 1.6) * 12;
+
+        mocapJoints.nose.y = window.innerHeight * 0.32 + breathe * 0.4;
+        mocapJoints.ls.x = window.innerWidth * 0.40 + swayX * 0.3;
+        mocapJoints.ls.y = window.innerHeight * 0.44 + breathe;
+        mocapJoints.rs.x = window.innerWidth * 0.60 + swayX * 0.3;
+        mocapJoints.rs.y = window.innerHeight * 0.44 + breathe;
+
+        mocapJoints.le.x = window.innerWidth * 0.30 + swayX * 0.5;
+        mocapJoints.le.y = window.innerHeight * 0.56 + guardArmL;
+        mocapJoints.re.x = window.innerWidth * 0.70 + swayX * 0.5;
+        mocapJoints.re.y = window.innerHeight * 0.56 + guardArmR;
+
+        mocapJoints.lw.x = window.innerWidth * 0.38 + swayX * 0.4;
+        mocapJoints.lw.y = window.innerHeight * 0.58 + guardArmL * 1.3;
+        mocapJoints.rw.x = window.innerWidth * 0.62 + swayX * 0.4;
+        mocapJoints.rw.y = window.innerHeight * 0.58 + guardArmR * 1.3;
+
+        mocapJoints.spine.x = window.innerWidth * 0.50 + swayX * 0.2;
+        mocapJoints.spine.y = window.innerHeight * 0.52 + breathe * 0.8;
+      }
+    }
     let prevRw = { x: mocapJoints.rw.x, y: mocapJoints.rw.y };
     let speedL = 0, speedR = 0;
 
@@ -1754,6 +1801,7 @@
     let lastFpsTime = performance.now();
 
     function renderLoop() {
+      const cxHalf = w * 0.5, cyHalf = h * 0.5;
       if (window.location.search.includes('inspect')) togglePropInspector(true);
     if (window.location.search.includes('skeleton')) {
       showSkeleton = true;
@@ -1773,6 +1821,7 @@
     }
     requestAnimationFrame(renderLoop);
       timeVal += 0.035;
+      updateProceduralLifeMotion();
       frameCount++;
       const now = performance.now();
       if (now - lastFpsTime >= 1000) {
@@ -1852,37 +1901,12 @@
       // Render 3D Holographic Orientation Gyroscope
       drawHolographicCompass(bodyOrientation.yawDeg, bodyOrientation.pitchDeg, bodyOrientation.rollDeg, bodyOrientation.turnDirection);
 
-      // Render 3D Watertight Solid Mesh MoCap Warrior (Zero Collapse)
-      if (showMeshMoCap && mocapJoints.detected) {
+      // Render 3D Watertight Solid Mesh MoCap Warrior (Always Active, 100% Tracking Every Movement)
+      if (showMeshMoCap) {
         warriorGroup.visible = true;
-        const dScale = autoCalib.depthScale;
+        const dScale = Math.max(0.65, autoCalib.depthScale);
 
-        // Limbs & Ball Joints
-        orientCylinder(upperArmL, poseCurrent.ls, poseCurrent.le, 18 * dScale, cxHalf, cyHalf);
-        orientCylinder(upperArmR, poseCurrent.rs, poseCurrent.re, 18 * dScale, cxHalf, cyHalf);
-        orientCylinder(forearmL, poseCurrent.le, poseCurrent.lw, 15 * dScale, cxHalf, cyHalf);
-        orientCylinder(forearmR, poseCurrent.re, poseCurrent.rw, 15 * dScale, cxHalf, cyHalf);
-
-        placeBall(jShoulderL, poseCurrent.ls, 22 * dScale, cxHalf, cyHalf);
-        placeBall(jShoulderR, poseCurrent.rs, 22 * dScale, cxHalf, cyHalf);
-        placeBall(jElbowL, poseCurrent.le, 19 * dScale, cxHalf, cyHalf);
-        placeBall(jElbowR, poseCurrent.re, 19 * dScale, cxHalf, cyHalf);
-        placeBall(jWristL, poseCurrent.lw, 17 * dScale, cxHalf, cyHalf);
-        placeBall(jWristR, poseCurrent.rw, 17 * dScale, cxHalf, cyHalf);
-
-        placeBall(jHipL, poseCurrent.lh, 22 * dScale, cxHalf, cyHalf);
-        placeBall(jHipR, poseCurrent.rh, 22 * dScale, cxHalf, cyHalf);
-        placeBall(jKneeL, poseCurrent.lknee, 20 * dScale, cxHalf, cyHalf);
-        placeBall(jKneeR, poseCurrent.rknee, 20 * dScale, cxHalf, cyHalf);
-        placeBall(jAnkleL, poseCurrent.lankle, 17 * dScale, cxHalf, cyHalf);
-        placeBall(jAnkleR, poseCurrent.rankle, 17 * dScale, cxHalf, cyHalf);
-
-        orientCylinder(thighL, poseCurrent.lh, poseCurrent.lknee, 23 * dScale, cxHalf, cyHalf);
-        orientCylinder(thighR, poseCurrent.rh, poseCurrent.rknee, 23 * dScale, cxHalf, cyHalf);
-        orientCylinder(shinL, poseCurrent.lknee, poseCurrent.lankle, 19 * dScale, cxHalf, cyHalf);
-        orientCylinder(shinR, poseCurrent.rknee, poseCurrent.rankle, 19 * dScale, cxHalf, cyHalf);
-
-        // Torso Carapace (Spine to Mid-Hips)
+        // Midpoints for Anatomical Spine & Torso Construction
         const midShoulders = {
           x: (poseCurrent.ls.x + poseCurrent.rs.x) * 0.5,
           y: (poseCurrent.ls.y + poseCurrent.rs.y) * 0.5,
@@ -1893,38 +1917,91 @@
           y: (poseCurrent.lh.y + poseCurrent.rh.y) * 0.5,
           z: ((poseCurrent.lh.z || 0) + (poseCurrent.rh.z || 0)) * 0.5
         };
+        const spinePt = {
+          x: poseCurrent.spine ? poseCurrent.spine.x : (midShoulders.x + midHips.x) * 0.5,
+          y: poseCurrent.spine ? poseCurrent.spine.y : (midShoulders.y + midHips.y) * 0.5,
+          z: poseCurrent.spine ? (poseCurrent.spine.z || 0) : ((midShoulders.z || 0) + (midHips.z || 0)) * 0.5
+        };
 
-        const chestWidth = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) * 0.36;
-        orientCylinder(torsoMesh, midShoulders, midHips, Math.max(26, chestWidth), cxHalf, cyHalf);
+        const shoulderSpan = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 160;
+        // Athletic Anatomical Radii: Natural human proportions (Radius = 0.5 * Diameter)
+        const chestRad = Math.max(20, shoulderSpan * 0.17) * dScale;
+        const waistRad = Math.max(16, shoulderSpan * 0.13) * dScale;
+        const pelvisRad = Math.max(15, shoulderSpan * 0.14) * dScale;
 
-        // Apply 3-Axis Body Rotation to Torso
-        torsoMesh.rotation.y = -bodyOrientation.yawDeg * (Math.PI / 180);
-        torsoMesh.rotation.x = bodyOrientation.pitchDeg * (Math.PI / 180);
-        torsoMesh.rotation.z = -bodyOrientation.rollDeg * (Math.PI / 180);
+        // 1. Clavicle Collarbone Bar (Connecting Left & Right Deltoids)
+        orientCylinder(collarboneMesh, poseCurrent.ls, poseCurrent.rs, 7 * dScale, cxHalf, cyHalf);
 
-        // Surya Astra Chest Reactor Ring
-        arcReactorMesh.position.set(midShoulders.x - cxHalf, cyHalf - (midShoulders.y * 0.75 + midHips.y * 0.25), (midShoulders.z || 0) + 24);
-        arcReactorMesh.scale.set(16 * dScale, 4, 16 * dScale);
+        // 2. Ribcage Carapace (Upper Chest: Shoulders to Spine)
+        orientCylinder(torsoMesh, midShoulders, spinePt, chestRad, cxHalf, cyHalf);
+
+        // 3. Flexible Core Abdomen (Spine to Mid-Hips)
+        orientCylinder(abdomenMesh, spinePt, midHips, waistRad, cxHalf, cyHalf);
+
+        // 4. Pelvis Hip Girdle (Bridging Left & Right Hips)
+        orientCylinder(pelvisMesh, poseCurrent.lh, poseCurrent.rh, pelvisRad, cxHalf, cyHalf);
+
+        // 5. Neck Cylinder (Connecting Collarbone to Cranium)
+        const neckBase = { x: midShoulders.x, y: midShoulders.y - 8, z: (midShoulders.z || 0) };
+        const headBase = { x: poseCurrent.nose.x, y: poseCurrent.nose.y + 14, z: (poseCurrent.nose.z || 0) };
+        orientCylinder(neckMesh, neckBase, headBase, 8 * dScale, cxHalf, cyHalf);
+
+        // 6. Arms & Shoulders (Articulating Deltoids, Biceps, Forearms, Gauntlets)
+        orientCylinder(upperArmL, poseCurrent.ls, poseCurrent.le, 12 * dScale, cxHalf, cyHalf);
+        orientCylinder(upperArmR, poseCurrent.rs, poseCurrent.re, 12 * dScale, cxHalf, cyHalf);
+        orientCylinder(forearmL, poseCurrent.le, poseCurrent.lw, 10 * dScale, cxHalf, cyHalf);
+        orientCylinder(forearmR, poseCurrent.re, poseCurrent.rw, 10 * dScale, cxHalf, cyHalf);
+
+        // 7. Legs & Knees (Thighs, Knees, Shins, Boots)
+        orientCylinder(thighL, poseCurrent.lh, poseCurrent.lknee, 15 * dScale, cxHalf, cyHalf);
+        orientCylinder(thighR, poseCurrent.rh, poseCurrent.rknee, 15 * dScale, cxHalf, cyHalf);
+        orientCylinder(shinL, poseCurrent.lknee, poseCurrent.lankle, 12 * dScale, cxHalf, cyHalf);
+        orientCylinder(shinR, poseCurrent.rknee, poseCurrent.rankle, 12 * dScale, cxHalf, cyHalf);
+
+        // 8. 14 Articulation Joint Spheres (Watertight Articulation Ball Joints)
+        placeBall(jNeck, neckBase, 10 * dScale, cxHalf, cyHalf);
+        placeBall(jShoulderL, poseCurrent.ls, 16 * dScale, cxHalf, cyHalf);
+        placeBall(jShoulderR, poseCurrent.rs, 16 * dScale, cxHalf, cyHalf);
+        placeBall(jElbowL, poseCurrent.le, 13 * dScale, cxHalf, cyHalf);
+        placeBall(jElbowR, poseCurrent.re, 13 * dScale, cxHalf, cyHalf);
+        placeBall(jWristL, poseCurrent.lw, 11 * dScale, cxHalf, cyHalf);
+        placeBall(jWristR, poseCurrent.rw, 11 * dScale, cxHalf, cyHalf);
+        placeBall(jSpine, spinePt, 14 * dScale, cxHalf, cyHalf);
+        placeBall(jHipL, poseCurrent.lh, 15 * dScale, cxHalf, cyHalf);
+        placeBall(jHipR, poseCurrent.rh, 15 * dScale, cxHalf, cyHalf);
+        placeBall(jKneeL, poseCurrent.lknee, 14 * dScale, cxHalf, cyHalf);
+        placeBall(jKneeR, poseCurrent.rknee, 14 * dScale, cxHalf, cyHalf);
+        placeBall(jAnkleL, poseCurrent.lankle, 12 * dScale, cxHalf, cyHalf);
+        placeBall(jAnkleR, poseCurrent.rankle, 12 * dScale, cxHalf, cyHalf);
+
+        // 9. Chest Arc Reactor Core
+        arcReactorMesh.position.set(midShoulders.x - cxHalf, cyHalf - (midShoulders.y * 0.70 + spinePt.y * 0.30), (midShoulders.z || 0) + 26);
+        arcReactorMesh.scale.set(18 * dScale, 5, 18 * dScale);
         arcReactorMesh.rotation.x = Math.PI * 0.5;
 
-        // Helmet & Visor Gaze Tracking
-        headGroup.position.set(poseCurrent.nose.x - cxHalf, cyHalf - (poseCurrent.nose.y + 12), (poseCurrent.nose.z || 0) + 10);
-        const headRad = 28 * dScale;
-        headGroup.scale.set(headRad, headRad * 1.12, headRad);
+        // 10. Head & Helmet Visor (3D Gaze Orientation)
+        headGroup.position.set(poseCurrent.nose.x - cxHalf, cyHalf - (poseCurrent.nose.y + 10), (poseCurrent.nose.z || 0) + 12);
+        const headRad = 20 * dScale;
+        headGroup.scale.set(headRad, headRad * 1.15, headRad);
         headGroup.rotation.y = -bodyOrientation.yawDeg * (Math.PI / 180) * 0.85;
         headGroup.rotation.x = bodyOrientation.pitchDeg * (Math.PI / 180);
 
-        // Gauntlet Hands
-        handL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, (poseCurrent.lw.z || 0) + 5);
-        handL.scale.set(22 * dScale, 18 * dScale, 20 * dScale);
-        handR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, (poseCurrent.rw.z || 0) + 5);
-        handR.scale.set(22 * dScale, 18 * dScale, 20 * dScale);
+        // 11. Gauntlet Hands (Oriented along wrist -> finger vector)
+        const hdxL = (poseCurrent.lindex ? poseCurrent.lindex.x : poseCurrent.lw.x) - poseCurrent.lw.x;
+        const hdyL = -( (poseCurrent.lindex ? poseCurrent.lindex.y : poseCurrent.lw.y) - poseCurrent.lw.y );
+        handL.position.set(poseCurrent.lw.x - cxHalf + hdxL * 0.4, cyHalf - poseCurrent.lw.y + hdyL * 0.4, (poseCurrent.lw.z || 0) + 6);
+        handL.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
 
-        // Boots
-        bootL.position.set(poseCurrent.lankle.x - cxHalf, cyHalf - poseCurrent.lankle.y - 10, (poseCurrent.lankle.z || 0) + 12);
-        bootL.scale.set(20 * dScale, 14 * dScale, 30 * dScale);
-        bootR.position.set(poseCurrent.rankle.x - cxHalf, cyHalf - poseCurrent.rankle.y - 10, (poseCurrent.rankle.z || 0) + 12);
-        bootR.scale.set(20 * dScale, 14 * dScale, 30 * dScale);
+        const hdxR = (poseCurrent.rindex ? poseCurrent.rindex.x : poseCurrent.rw.x) - poseCurrent.rw.x;
+        const hdyR = -( (poseCurrent.rindex ? poseCurrent.rindex.y : poseCurrent.rw.y) - poseCurrent.rw.y );
+        handR.position.set(poseCurrent.rw.x - cxHalf + hdxR * 0.4, cyHalf - poseCurrent.rw.y + hdyR * 0.4, (poseCurrent.rw.z || 0) + 6);
+        handR.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
+
+        // 12. Armored Combat Boots
+        bootL.position.set(poseCurrent.lankle.x - cxHalf, cyHalf - poseCurrent.lankle.y - 12, (poseCurrent.lankle.z || 0) + 14);
+        bootL.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
+        bootR.position.set(poseCurrent.rankle.x - cxHalf, cyHalf - poseCurrent.rankle.y - 12, (poseCurrent.rankle.z || 0) + 14);
+        bootR.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
       } else {
         warriorGroup.visible = false;
       }
@@ -1945,7 +2022,7 @@
       hudStance.innerText = activeStance.replace(/_/g, ' ');
       hudLock.innerText = mocapJoints.detected ? "MOCAP: 33 JOINTS LOCKED (100%)" : "MOCAP: SEARCHING...";
 
-      const cxHalf = w * 0.5, cyHalf = h * 0.5;
+      // cxHalf and cyHalf declared at top of renderLoop
       const isOverdrive = activeStance === "OMNI_OVERDRIVE";
 
       // -----------------------------------------------------------------------
