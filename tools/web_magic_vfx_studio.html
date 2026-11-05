@@ -864,36 +864,48 @@
 
     const { colorTex: shangChiColorMap, normalTex: shangChiNormalMap, emissiveTex: shangChiEmissiveMap } = generateShangChiRuneMaps();
 
-    // 1. Heavy Forged Antique Copper Bronze PBR Material (Matched to Movie Prop Photo)
+    // 1. Heavy Forged Antique Copper Bronze PBR Material (Hollywood Grade Anisotropic Reflections)
     const matAntiqueCopper = new THREE.MeshStandardMaterial({
-      color: 0xba6a44, // Warm authentic antique brushed rose-copper
-      metalness: 0.94,
-      roughness: 0.22,
-      clearcoat: 0.50,
-      clearcoatRoughness: 0.14,
-      envMapIntensity: 2.2
+      color: 0xc87442, // Rich warm antique brushed rose-copper
+      metalness: 0.96,
+      roughness: 0.16, // Glossy specular sheen
+      clearcoat: 0.80,
+      clearcoatRoughness: 0.10,
+      envMapIntensity: 2.8
     });
 
-    // 2. Chiseled Silver Damascus Rune Inlay Material (Balanced Emissive so Silver Detail is Crisp)
+    // 2. Chiseled Silver Damascus Rune Inlay Material (PolygonOffset Eliminates 100% Z-Fighting)
     const matRuneInlay = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       map: shangChiColorMap,
       normalMap: shangChiNormalMap,
-      normalScale: new THREE.Vector2(3.2, 3.2), // Deep chiseled relief
+      normalScale: new THREE.Vector2(3.6, 3.6), // Ultra-deep chiseled relief
       metalness: 0.92,
-      roughness: 0.24,
+      roughness: 0.18,
       emissive: 0xff7700,
       emissiveMap: shangChiEmissiveMap,
-      emissiveIntensity: 0.85, // Crisp silver Damascus details, not washed-out solid neon
-      envMapIntensity: 1.8
+      emissiveIntensity: 1.30, // Crisp glowing silver Damascus runes
+      polygonOffset: true,
+      polygonOffsetFactor: -1.5,
+      polygonOffsetUnits: -1.5,
+      envMapIntensity: 2.4
     });
 
-    // 3. Internal Molten Core Plasma Tube Material
+    // 3. Internal Molten Core Plasma Tube Material (Bold Radiant Energy Filament)
     const matRingPlasmaCore = new THREE.MeshBasicMaterial({
-      color: 0xffd060,
+      color: 0xffea88,
       transparent: true,
-      opacity: 0.80,
+      opacity: 0.92,
       blending: THREE.AdditiveBlending
+    });
+
+    // 4. Volumetric Outer Qi Energy Aura (Marvel Signature Mythical Halo)
+    const matRingAura = new THREE.MeshBasicMaterial({
+      color: 0xff9900,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
     });
 
     // Precision 13-Point Lathe Profile Function for Authentic Marvel Prop Ring
@@ -924,11 +936,12 @@
     const ringGroup = new THREE.Group();
     const tenRings = [];
 
-    // Shared Reusable Geometries (Deep Channel + Raised Silver Damascus Inlay)
+    // Shared Reusable Geometries (Deep Channel + Raised Silver Damascus Inlay + Aura Halo)
     const shangChiBodyGeo = createShangChiRingGeometry();
-    const shangChiRuneGeo = new THREE.CylinderGeometry(0.920, 0.920, 0.14, 84, 1, true);
+    const shangChiRuneGeo = new THREE.CylinderGeometry(0.928, 0.928, 0.14, 84, 1, true);
     shangChiRuneGeo.rotateX(Math.PI * 0.5);
-    const shangChiPlasmaGeo = new THREE.TorusGeometry(0.920, 0.024, 20, 60);
+    const shangChiPlasmaGeo = new THREE.TorusGeometry(0.928, 0.055, 24, 72);
+    const shangChiAuraGeo = new THREE.TorusGeometry(1.02, 0.075, 16, 60);
 
     // Construct 10 Movie-Accurate Precision Arm Rings
     for (let i = 0; i < 10; i++) {
@@ -938,18 +951,23 @@
       const bodyMesh = new THREE.Mesh(shangChiBodyGeo, matAntiqueCopper);
       ringObj.add(bodyMesh);
 
-      // 2. Chiseled Silver Damascus Rune Inlay Band
+      // 2. Chiseled Silver Damascus Rune Inlay Band (No Z-fighting)
       const runeMesh = new THREE.Mesh(shangChiRuneGeo, matRuneInlay);
       ringObj.add(runeMesh);
 
-      // 3. Glowing Qi Molten Core Plasma Ring
+      // 3. Glowing Qi Molten Core Plasma Ring (Bold 0.055 tube)
       const plasmaMesh = new THREE.Mesh(shangChiPlasmaGeo, matRingPlasmaCore);
       ringObj.add(plasmaMesh);
+
+      // 4. Volumetric Mythical Qi Energy Aura Corona
+      const auraMesh = new THREE.Mesh(shangChiAuraGeo, matRingAura);
+      ringObj.add(auraMesh);
 
       ringObj.userData = {
         bodyMesh,
         runeMesh,
         plasmaMesh,
+        auraMesh,
         currentPos: new THREE.Vector3(),
         currentScale: 1.0,
         spinAngle: 0.0
@@ -1035,6 +1053,22 @@
         this.summonProgress = 0.0;
         this.isLocked = false;
         this.ringLockedFlags.fill(false);
+
+        // Snapshot fixed celestial origins in screen coordinates so they never jitter if hands move
+        const cw = window.innerWidth, ch = window.innerHeight;
+        this.celestialOrigins = [];
+        for (let i = 0; i < 10; i++) {
+          const isRight = (i >= 5);
+          const k = i % 5;
+          const sign = isRight ? 1 : -1;
+          const angle = (k / 5.0) * Math.PI * 0.6 + (isRight ? 0.2 : 2.4);
+          this.celestialOrigins.push({
+            x: cw * 0.5 + sign * (cw * 0.44 + k * 28),
+            y: ch * 0.18 + Math.sin(angle) * 70,
+            z: 140 + k * 25
+          });
+        }
+
         showQiToast("⚡ TA LO QI: WEARING TEN RINGS OVER HANDS!");
         playRingClangSFX(1.1);
         const btn = document.getElementById('btnSummonRings');
@@ -1049,15 +1083,17 @@
         const btn = document.getElementById('btnRingStyle');
         if (this.mode === "SHANG_CHI_GOLD") {
           matRuneInlay.emissive.setHex(0xff7700);
-          matRingPlasmaCore.color.setHex(0xffe6a0);
-          matAntiqueCopper.color.setHex(0xba6a44);
-          matRuneInlay.emissiveIntensity = 0.85;
+          matRingPlasmaCore.color.setHex(0xffea88);
+          if (typeof matRingAura !== 'undefined') matRingAura.color.setHex(0xff9900);
+          matAntiqueCopper.color.setHex(0xc87442);
+          matRuneInlay.emissiveIntensity = 1.30;
           if (btn) btn.innerText = "🎨 QI: TA LO GOLD";
         } else {
           matRuneInlay.emissive.setHex(0x00d4ff);
           matRingPlasmaCore.color.setHex(0x80f0ff);
+          if (typeof matRingAura !== 'undefined') matRingAura.color.setHex(0x00a0ff);
           matAntiqueCopper.color.setHex(0x4a6582);
-          matRuneInlay.emissiveIntensity = 1.05;
+          matRuneInlay.emissiveIntensity = 1.45;
           if (btn) btn.innerText = "🎨 QI: WENWU BLUE";
         }
       }
@@ -2145,7 +2181,7 @@
           const armLen2D = Math.hypot(fdx, fdy) || 1;
           const boneLen3D = Math.hypot(fdx, fdy, fdz) || 1;
 
-          // Reference forearm length (depth invariant so rings never shrink when pointing at camera)
+          // Reference forearm length
           const refArmLen = Math.max(armLen2D, shoulderW * 0.85);
 
           // Forearm Collinear 3D Direction Vector
@@ -2165,16 +2201,28 @@
             hdy / handLen,
             (hdz / handLen) + 0.15
           ).normalize();
+
+          // Smooth Hand Direction (Follows Wrist Articulation & Palm Rotation)
           const safeHandDir = armDir3D.clone();
-          if (handLen > 20) {
-            safeHandDir.lerp(handDir3D, 0.75).normalize();
+          if (handLen > 18) {
+            safeHandDir.lerp(handDir3D, 0.70).normalize();
           }
 
-          // Punch Direction Vector (Fist forward thrust)
-          const punchDir = arm.strike.active ? arm.strike.dir : handDir3D;
+          // Active Dynamic Orientation: Rings follow hand rotation when wrist flexes!
+          const activeHandOrientation = armDir3D.clone().lerp(safeHandDir, 0.45).normalize();
 
-          // Movie-Authentic Prop Ring Radius (Exact anatomical fit to forearm thickness)
-          const baseRingRad = Math.max(28, refArmLen * 0.175);
+          // Punch Direction Vector (Fist forward thrust)
+          const punchDir = arm.strike.active ? arm.strike.dir : safeHandDir;
+
+          // Movie-Authentic Prop Ring Radius
+          const baseRingRad = Math.max(26, refArmLen * 0.175);
+          // Ring physical thickness & spacing along forearm
+          const ringSpacing = Math.max(11, baseRingRad * 0.38);
+
+          // 2D Unit vector along forearm (for direct wrist-anchored slots)
+          const uForearmX = fdx / armLen2D;
+          const uForearmY = (arm.wrist.y - arm.elbow.y) / armLen2D; // In screen space (Y down)
+          const uForearmZ = (fdz / boneLen3D);
 
           // 5 Rings per Arm
           for (let k = 0; k < 5; k++) {
@@ -2183,14 +2231,15 @@
             const smooth = ringSmoothData[ringIdx];
 
             // -----------------------------------------------------------------
-            // MOVIE-ACCURATE LOWER FOREARM RESTING SLOTS
-            // In the movie, the 5 rings stack tightly right above the wrist joint!
-            // Ring 4 = closest to wrist (0.86), Ring 0 = highest on lower forearm (0.60)
+            // DIRECT 1:1 HAND/WRIST-ANCHORED RESTING SLOTS
+            // Ring 4 = exactly at wrist joint crease (10px behind wrist bone)
+            // Ring 0 = stacked tightly 4 rings up the lower forearm
+            // When wrist moves 100px, EVERY ring moves 100px with 1:1 direct lock!
             // -----------------------------------------------------------------
-            const slotFrac = 0.60 + k * 0.065;
-            const targetSlotX = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * slotFrac;
-            const targetSlotY = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * slotFrac;
-            const targetSlotZ = (arm.elbow.z || 0) + ((arm.wrist.z || 0) - (arm.elbow.z || 0)) * slotFrac + 15;
+            const distFromWrist = (4 - k) * ringSpacing + 12;
+            const targetSlotX = arm.wrist.x - uForearmX * distFromWrist;
+            const targetSlotY = arm.wrist.y - uForearmY * distFromWrist;
+            const targetSlotZ = (arm.wrist.z || 0) - uForearmZ * distFromWrist + 15;
 
             // Anatomical muscular taper: 1.04x higher on forearm, 0.96x at wrist bone
             const taperScale = 1.04 - k * 0.02;
@@ -2202,65 +2251,94 @@
             let targetY = targetSlotY;
             let targetZ = targetSlotZ;
             let targetScale = baseRingRad * (taperScale + qiBreath);
-            let targetDir = armDir3D.clone();
+            let targetDir = activeHandOrientation.clone(); // Directly articulates with hand!
 
             // =================================================================
-            // 1. CINEMATIC WEARING SEQUENCE: SLIDING OVER HAND SMOOTH & CORRECT
+            // 1. CINEMATIC WEARING SEQUENCE: FLUID CUBIC BEZIER & VISIBLE COVER
             // =================================================================
             if (ringsState.summonActive) {
-              const ringDelay = k * 0.11;
-              const duration = 0.44;
+              const ringDelay = k * 0.10;
+              const duration = 0.50;
               const u = Math.min(1.0, Math.max(0.0, (ringsState.summonProgress - ringDelay) / duration));
-              const easeU = u * u * (3.0 - 2.0 * u); // Smooth cubic hermite curve
 
-              // Hand Waypoints
-              const tipX = arm.wrist.x + handDir3D.x * (handLen * 1.25);
-              const tipY = arm.wrist.y - handDir3D.y * (handLen * 1.25);
+              // Fingertips entry waypoint (in front of fingers along hand vector)
+              const tipX = arm.wrist.x + safeHandDir.x * (handLen * 1.30);
+              const tipY = arm.wrist.y - safeHandDir.y * (handLen * 1.30);
               const tipZ = (arm.wrist.z || 0) + 30;
 
-              if (easeU < 0.22) {
-                // Phase 1: Swooping from celestial space down to Fingertips
-                const subU = easeU / 0.22;
-                const haloAngle = timeVal * 2.0 + ringIdx * 0.628;
-                const startX = arm.wrist.x + arm.sign * (140 + k * 22) + Math.cos(haloAngle) * 35;
-                const startY = arm.wrist.y - 120 + Math.sin(haloAngle) * 30; // Swoop in from above/lateral
-                const startZ = 90 + Math.sin(haloAngle * 2) * 25;
+              // Celestial origin snapshot (never jitters if hand moves!)
+              const origin = (ringsState.celestialOrigins && ringsState.celestialOrigins[ringIdx]) ?
+                ringsState.celestialOrigins[ringIdx] :
+                { x: arm.wrist.x + arm.sign * 260, y: arm.wrist.y - 180, z: 120 };
 
-                targetX = startX + (tipX - startX) * subU;
-                targetY = startY + (tipY - startY) * subU;
-                targetZ = startZ + (tipZ - startZ) * subU;
+              // Mid-orbit flourish control point
+              const orbitAngle = timeVal * 3.0 + ringIdx * 0.628;
+              const ctrlX = arm.wrist.x + arm.sign * (150 + k * 18) + Math.cos(orbitAngle) * 35;
+              const ctrlY = arm.wrist.y - 80 + Math.sin(orbitAngle) * 35;
+              const ctrlZ = 85;
+
+              if (u < 0.42) {
+                // Phase 1: Fluid Quadratic Bézier flight from celestial space to Fingertips
+                const subU = u / 0.42;
+                const easeFlight = subU * subU * (3.0 - 2.0 * subU);
+                const invF = 1.0 - easeFlight;
+                // B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+                targetX = invF * invF * origin.x + 2 * invF * easeFlight * ctrlX + easeFlight * easeFlight * tipX;
+                targetY = invF * invF * origin.y + 2 * invF * easeFlight * ctrlY + easeFlight * easeFlight * tipY;
+                targetZ = invF * invF * origin.z + 2 * invF * easeFlight * ctrlZ + easeFlight * easeFlight * tipZ;
                 targetScale = baseRingRad * 1.15;
                 targetDir.copy(safeHandDir);
-              } else if (easeU < 0.65) {
-                // Phase 2: SLIDING VISIBLY OVER THE FINGERS, PALM & KNUCKLES
-                // Ring EXPANDS by 40% so it visibly slips OVER the wide knuckles and thumb!
-                const subU = (easeU - 0.22) / 0.43;
-                targetX = tipX + (arm.wrist.x - tipX) * subU;
-                targetY = tipY + (arm.wrist.y - tipY) * subU;
-                targetZ = tipZ + ((arm.wrist.z || 0) + 18 - tipZ) * subU;
-                // Peak expansion at palm center (subU = 0.5)
-                targetScale = baseRingRad * (1.10 + Math.sin(subU * Math.PI) * 0.40);
-                targetDir.copy(safeHandDir);
-              } else if (easeU < 1.0) {
-                // Phase 3: SLIDING DOWN FOREARM FROM WRIST TO TARGET RESTING SLOT
-                // Contracts snugly down to exact forearm muscular taper!
-                const subU = (easeU - 0.65) / 0.35;
-                targetX = arm.wrist.x + (targetSlotX - arm.wrist.x) * subU;
-                targetY = arm.wrist.y + (targetSlotY - arm.wrist.y) * subU;
-                targetZ = (arm.wrist.z || 0) + (targetSlotZ - (arm.wrist.z || 0)) * subU;
-                targetScale = baseRingRad * (1.25 * (1.0 - subU) + taperScale * subU);
-                targetDir.lerpVectors(safeHandDir, armDir3D, subU).normalize();
+
+                // Draw streaming golden Qi streamer on HUD
+                hudCtx.save();
+                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 185, 30, 0.75)' : 'rgba(0, 220, 255, 0.75)';
+                hudCtx.lineWidth = 3.0;
+                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ff7700' : '#0099ff';
+                hudCtx.shadowBlur = 12;
+                hudCtx.beginPath();
+                hudCtx.moveTo(origin.x, origin.y);
+                hudCtx.quadraticCurveTo(ctrlX, ctrlY, targetX, targetY);
+                hudCtx.stroke();
+                hudCtx.restore();
+
+              } else if (u < 1.0) {
+                // Phase 2: SLIDING VISIBLY OVER FINGERS, KNUCKLES, PALM TO FOREARM SLOT
+                // Smooth Hermite glide from tipX to targetSlotX
+                const subU = (u - 0.42) / 0.58;
+                const easeSlide = subU * subU * (3.0 - 2.0 * subU);
+
+                targetX = tipX + (targetSlotX - tipX) * easeSlide;
+                targetY = tipY + (targetSlotY - tipY) * easeSlide;
+                targetZ = tipZ + (targetSlotZ - tipZ) * easeSlide;
+
+                // VISIBLY EXPANDS BY 48% over knuckles and palm!
+                const handBulge = Math.sin(easeSlide * Math.PI) * 0.48;
+                targetScale = baseRingRad * (taperScale + handBulge);
+                targetDir.lerpVectors(safeHandDir, activeHandOrientation, easeSlide).normalize();
+
+                // Draw energetic sliding Qi arc
+                hudCtx.save();
+                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 230, 120, 0.90)' : 'rgba(140, 240, 255, 0.90)';
+                hudCtx.lineWidth = 4.0;
+                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ffaa00' : '#00d4ff';
+                hudCtx.shadowBlur = 16;
+                hudCtx.beginPath();
+                hudCtx.moveTo(tipX, tipY);
+                hudCtx.lineTo(targetX, targetY);
+                hudCtx.stroke();
+                hudCtx.restore();
+
               } else {
-                // Phase 4: Locked into Resting Slot
+                // Phase 3: Locked solidly onto forearm slot!
                 targetX = targetSlotX;
                 targetY = targetSlotY;
                 targetZ = targetSlotZ;
                 targetScale = baseRingRad * taperScale;
-                targetDir.copy(armDir3D);
+                targetDir.copy(activeHandOrientation);
 
                 if (!ringsState.ringLockedFlags[ringIdx]) {
                   ringsState.ringLockedFlags[ringIdx] = true;
-                  playRingClangSFX(1.0 + k * 0.14);
+                  playRingClangSFX(1.0 + k * 0.15);
                 }
               }
             } else if (ringsState.shieldActive) {
@@ -2283,8 +2361,8 @@
               const maxDist = 520 + k * 35;
 
               // Fist point (end of knuckles)
-              const fistX = arm.wrist.x + handDir3D.x * (handLen * 0.95);
-              const fistY = arm.wrist.y - handDir3D.y * (handLen * 0.95);
+              const fistX = arm.wrist.x + safeHandDir.x * (handLen * 0.95);
+              const fistY = arm.wrist.y - safeHandDir.y * (handLen * 0.95);
               const fistZ = (arm.wrist.z || 0) + 18;
 
               if (p < 0.5) {
@@ -2300,7 +2378,7 @@
                   targetY = targetSlotY + (fistY - targetSlotY) * subU;
                   targetZ = targetSlotZ + (fistZ - targetSlotZ) * subU;
                   targetScale = baseRingRad * (taperScale + Math.sin(subU * Math.PI) * 0.25);
-                  targetDir.lerpVectors(armDir3D, punchDir, subU).normalize();
+                  targetDir.lerpVectors(activeHandOrientation, punchDir, subU).normalize();
                 } else {
                   // Phase B: Blasting forward as kinetic projectile
                   const subU = (ringU - 0.28) / 0.72;
@@ -2311,6 +2389,18 @@
                   targetZ = fistZ + punchDir.z * forwardDist + Math.sin(spiralAngle * 2) * 18;
                   targetScale = baseRingRad * (1.0 + (forwardDist / maxDist) * 0.30);
                   targetDir.copy(punchDir);
+
+                  // Golden projectile streak on HUD
+                  hudCtx.save();
+                  hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 190, 40, 0.85)' : 'rgba(0, 220, 255, 0.85)';
+                  hudCtx.lineWidth = 3.5;
+                  hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ff6600' : '#00a0ff';
+                  hudCtx.shadowBlur = 14;
+                  hudCtx.beginPath();
+                  hudCtx.moveTo(fistX, fistY);
+                  hudCtx.lineTo(targetX, targetY);
+                  hudCtx.stroke();
+                  hudCtx.restore();
                 }
               } else {
                 // --- INWARD RETURN ---
@@ -2334,14 +2424,14 @@
                   targetY = fistY + (targetSlotY - fistY) * subU;
                   targetZ = fistZ + (targetSlotZ - fistZ) * subU;
                   targetScale = baseRingRad * (1.20 * (1.0 - subU) + taperScale * subU);
-                  targetDir.lerpVectors(punchDir, armDir3D, subU).normalize();
+                  targetDir.lerpVectors(punchDir, activeHandOrientation, subU).normalize();
                 }
               }
             }
 
             // -----------------------------------------------------------------
-            // BUTTERY-SMOOTH ADAPTIVE INERTIA & QUATERNION SLERP FILTER
-            // Eliminates 100% of jitter when still; instant zero-lag response when moving!
+            // ZERO-LAG 1:1 SNAPPY TRACKING & ADAPTIVE QUATERNION FILTER
+            // Rings move INSTANTLY with the hand; rock-solid freeze when still!
             // -----------------------------------------------------------------
             const threeTargetX = targetX - cxHalf;
             const threeTargetY = cyHalf - targetY;
@@ -2358,19 +2448,19 @@
               smooth.quat.copy(targetQuat);
               smooth.initialized = true;
             } else {
-              // Adaptive smoothing: rock solid when stationary, instant snappy 1:1 lock when moving!
+              // Direct snappy tracking: 0.98 alpha when moving = zero latency!
               const dX = threeTargetX - ring.position.x;
               const dY = threeTargetY - ring.position.y;
               const dZ = threeTargetZ - ring.position.z;
               const moveDist = Math.hypot(dX, dY, dZ);
-              const alphaPos = moveDist > 16 ? 0.94 : (moveDist > 6 ? 0.72 : 0.42);
-              const alphaQuat = moveDist > 16 ? 0.90 : (moveDist > 6 ? 0.68 : 0.38);
+              const alphaPos = moveDist > 8 ? 0.98 : (moveDist > 2 ? 0.88 : 0.65);
+              const alphaQuat = moveDist > 8 ? 0.95 : (moveDist > 2 ? 0.85 : 0.60);
 
               ring.position.x += dX * alphaPos;
               ring.position.y += dY * alphaPos;
               ring.position.z += dZ * alphaPos;
 
-              ring.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.55);
+              ring.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.70);
               ring.quaternion.slerp(targetQuat, alphaQuat);
             }
 
