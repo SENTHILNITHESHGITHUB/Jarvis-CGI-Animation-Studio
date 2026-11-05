@@ -243,13 +243,13 @@
     <div class="telemetry">
       <div class="badge badge-pilot">PILOT: NITHESH</div>
       <div class="badge badge-lock" id="hudLock">MOCAP: SEARCHING...</div>
-      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.15); border-color:rgba(245, 158, 11, 0.5); color:#fbbf24;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior (Key [M])">🛡️ 3D MESH: OFF</div>
+      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fbbf24; font-weight:800;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior (Key [M])">🛡️ 3D MESH: ON</div>
       <div class="badge badge-interactive" id="btnCalibrate" style="background:rgba(16, 185, 129, 0.2); border-color:rgba(16, 185, 129, 0.7); color:#34d399;" title="Auto Proportion Calibration Status">🎯 CALIB: 100%</div>
       <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
       <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
       <div class="badge badge-interactive" id="btnFullscreen" style="background:rgba(59, 130, 246, 0.22); border-color:rgba(59, 130, 246, 0.7); color:#60a5fa; font-weight:800;" title="Toggle Fullscreen (Hotkey [F])">⛶ FULLSCREEN [F]</div>
       <div class="badge badge-interactive" id="btnToggleHud" style="background:rgba(255, 255, 255, 0.12); border-color:rgba(255, 255, 255, 0.35); color:#e2e8f0; font-weight:700;" title="Toggle HUD Auto-Hide (Hotkey [H])">👁️ HUD [H]</div>
-      <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.5); color:#38bdf8;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: OFF</div>
+      <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.25); border-color:rgba(56, 189, 248, 0.85); color:#38bdf8; font-weight:800;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: ON</div>
       <div class="badge badge-interactive" id="btnInspectProp" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Open 360° 3D Movie Prop Inspector (Drag & Zoom)">🔍 3D PROP INSPECT</div>
       <div class="badge badge-interactive" id="btnOmniRoute" style="background:rgba(99, 102, 241, 0.18); border-color:rgba(99, 102, 241, 0.6); color:#a5b4fc;" title="OmniRoute AI Gateway Online (Port 20128) - Click to trigger AI Director Cue">🌐 OMNIROUTE: ONLINE (20128)</div>
       <div class="badge badge-interactive" id="btnSource" style="background:rgba(234, 179, 8, 0.15); border-color:rgba(234, 179, 8, 0.5); color:#facc15;" title="Switch Live Webcam / 4K Demo Shot">📹 SOURCE: LIVE CAM</div>
@@ -342,12 +342,12 @@
     const btnSkeleton = document.getElementById('btnSkeleton');
     const heatTurb = document.getElementById('heatTurb');
 
-    let showSkeleton = false;
-    let showMeshMoCap = false;
+    let showSkeleton = true;
+    let showMeshMoCap = true;
 
     if (btnSkeleton) {
-      btnSkeleton.innerText = "🦴 SKELETON: OFF";
-      btnSkeleton.style.opacity = "0.6";
+      btnSkeleton.innerText = "🦴 SKELETON: ON";
+      btnSkeleton.style.opacity = "1.0";
       btnSkeleton.addEventListener('click', () => {
         showSkeleton = !showSkeleton;
         btnSkeleton.innerText = showSkeleton ? "🦴 SKELETON: ON" : "🦴 SKELETON: OFF";
@@ -356,6 +356,8 @@
     }
 
     if (btnMeshMoCap) {
+      btnMeshMoCap.innerText = "🛡️ 3D MESH: ON";
+      btnMeshMoCap.style.opacity = "1.0";
       btnMeshMoCap.addEventListener('click', () => {
         showMeshMoCap = !showMeshMoCap;
         btnMeshMoCap.innerText = showMeshMoCap ? "🛡️ 3D MESH: ON" : "🛡️ 3D MESH: OFF";
@@ -1530,6 +1532,7 @@
     // 3D WATERTIGHT SOLID MESH MOCAP WARRIOR (ZERO COLLAPSE, PBR SHADERS)
     // -------------------------------------------------------------------------
     const warriorGroup = new THREE.Group();
+    warriorGroup.visible = true;
     scene.add(warriorGroup);
 
     // Master Cinematic Nanotech MoCap Suit PBR Materials (Vibrant & Highly Visible)
@@ -2011,13 +2014,13 @@
 
       // Motion ribbons and shockwaves removed per user request for pure, clean video
 
-      // MoCap skeleton and orientation compass only rendered when explicitly toggled ON via HUD (Clean pure AR by default)
-      if (showSkeleton && hudVisible) {
+      // MoCap skeleton and orientation compass rendered directly when showSkeleton is true
+      if (showSkeleton) {
         drawMoCapSkeleton(poseCurrent);
         drawHolographicCompass(bodyOrientation.yawDeg, bodyOrientation.pitchDeg, bodyOrientation.rollDeg, bodyOrientation.turnDirection);
       }
 
-      // Render 3D Watertight Solid Mesh MoCap Warrior (Always Active, 100% Tracking Every Movement)
+      // Render 3D Watertight Solid Mesh MoCap Warrior (Always Active, 100% Real-Time Tracking)
       if (showMeshMoCap && warriorGroup) {
         warriorGroup.visible = true;
         const dScale = Math.max(0.65, autoCalib.depthScale);
@@ -2028,18 +2031,29 @@
           y: (poseCurrent.ls.y + poseCurrent.rs.y) * 0.5,
           z: ((poseCurrent.ls.z || 0) + (poseCurrent.rs.z || 0)) * 0.5
         };
-        const midHips = {
-          x: (poseCurrent.lh.x + poseCurrent.rh.x) * 0.5,
-          y: (poseCurrent.lh.y + poseCurrent.rh.y) * 0.5,
-          z: ((poseCurrent.lh.z || 0) + (poseCurrent.rh.z || 0)) * 0.5
-        };
-        const spinePt = {
-          x: poseCurrent.spine ? poseCurrent.spine.x : (midShoulders.x + midHips.x) * 0.5,
-          y: poseCurrent.spine ? poseCurrent.spine.y : (midShoulders.y + midHips.y) * 0.5,
-          z: poseCurrent.spine ? (poseCurrent.spine.z || 0) : ((midShoulders.z || 0) + (midHips.z || 0)) * 0.5
-        };
 
         const shoulderSpan = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 160;
+
+        // Seated Desk Anatomical Fallback: Ensure hips and legs stay anatomically grounded even if cut off by desk
+        let hipL = { ...poseCurrent.lh };
+        let hipR = { ...poseCurrent.rh };
+        const estHipY = midShoulders.y + shoulderSpan * 1.35;
+        if (!hipL || !hipR || hipL.y < midShoulders.y + 35 || Math.abs(hipL.y - midShoulders.y) < 30 || hipL.y > window.innerHeight + 120) {
+          hipL = { x: midShoulders.x - shoulderSpan * 0.38, y: estHipY, z: midShoulders.z || 0 };
+          hipR = { x: midShoulders.x + shoulderSpan * 0.38, y: estHipY, z: midShoulders.z || 0 };
+        }
+
+        const midHips = {
+          x: (hipL.x + hipR.x) * 0.5,
+          y: (hipL.y + hipR.y) * 0.5,
+          z: (((hipL.z || 0) + (hipR.z || 0)) * 0.5)
+        };
+        const spinePt = {
+          x: (midShoulders.x + midHips.x) * 0.5,
+          y: (midShoulders.y + midHips.y) * 0.5,
+          z: (((midShoulders.z || 0) + (midHips.z || 0)) * 0.5)
+        };
+
         // Athletic Anatomical Radii: Natural human proportions (Radius = 0.5 * Diameter)
         const chestRad = Math.max(20, shoulderSpan * 0.17) * dScale;
         const waistRad = Math.max(16, shoulderSpan * 0.13) * dScale;
@@ -2055,7 +2069,7 @@
         orientCylinder(abdomenMesh, spinePt, midHips, waistRad, cxHalf, cyHalf);
 
         // 4. Pelvis Hip Girdle (Bridging Left & Right Hips)
-        orientCylinder(pelvisMesh, poseCurrent.lh, poseCurrent.rh, pelvisRad, cxHalf, cyHalf);
+        orientCylinder(pelvisMesh, hipL, hipR, pelvisRad, cxHalf, cyHalf);
 
         // 5. Neck Cylinder (Connecting Collarbone to Cranium)
         const neckBase = { x: midShoulders.x, y: midShoulders.y - 8, z: (midShoulders.z || 0) };
@@ -2068,11 +2082,20 @@
         orientCylinder(forearmL, poseCurrent.le, poseCurrent.lw, 10 * dScale, cxHalf, cyHalf);
         orientCylinder(forearmR, poseCurrent.re, poseCurrent.rw, 10 * dScale, cxHalf, cyHalf);
 
-        // 7. Legs & Knees (Thighs, Knees, Shins, Boots)
-        orientCylinder(thighL, poseCurrent.lh, poseCurrent.lknee, 15 * dScale, cxHalf, cyHalf);
-        orientCylinder(thighR, poseCurrent.rh, poseCurrent.rknee, 15 * dScale, cxHalf, cyHalf);
-        orientCylinder(shinL, poseCurrent.lknee, poseCurrent.lankle, 12 * dScale, cxHalf, cyHalf);
-        orientCylinder(shinR, poseCurrent.rknee, poseCurrent.rankle, 12 * dScale, cxHalf, cyHalf);
+        // 7. Legs & Knees (Thighs, Knees, Shins, Boots with seated bounds)
+        let kneeL = poseCurrent.lknee, kneeR = poseCurrent.rknee;
+        let ankleL = poseCurrent.lankle, ankleR = poseCurrent.rankle;
+        const estKneeY = midHips.y + shoulderSpan * 1.05;
+        const estAnkleY = estKneeY + shoulderSpan * 1.05;
+        if (!kneeL || kneeL.y < midHips.y + 20) kneeL = { x: hipL.x - 10, y: estKneeY, z: (hipL.z || 0) + 15 };
+        if (!kneeR || kneeR.y < midHips.y + 20) kneeR = { x: hipR.x + 10, y: estKneeY, z: (hipR.z || 0) + 15 };
+        if (!ankleL || ankleL.y < kneeL.y + 20) ankleL = { x: kneeL.x, y: estAnkleY, z: kneeL.z || 0 };
+        if (!ankleR || ankleR.y < kneeR.y + 20) ankleR = { x: kneeR.x, y: estAnkleY, z: kneeR.z || 0 };
+
+        orientCylinder(thighL, hipL, kneeL, 15 * dScale, cxHalf, cyHalf);
+        orientCylinder(thighR, hipR, kneeR, 15 * dScale, cxHalf, cyHalf);
+        orientCylinder(shinL, kneeL, ankleL, 12 * dScale, cxHalf, cyHalf);
+        orientCylinder(shinR, kneeR, ankleR, 12 * dScale, cxHalf, cyHalf);
 
         // 8. 14 Articulation Joint Spheres (Watertight Articulation Ball Joints)
         placeBall(jNeck, neckBase, 10 * dScale, cxHalf, cyHalf);
@@ -2083,12 +2106,12 @@
         placeBall(jWristL, poseCurrent.lw, 11 * dScale, cxHalf, cyHalf);
         placeBall(jWristR, poseCurrent.rw, 11 * dScale, cxHalf, cyHalf);
         placeBall(jSpine, spinePt, 14 * dScale, cxHalf, cyHalf);
-        placeBall(jHipL, poseCurrent.lh, 15 * dScale, cxHalf, cyHalf);
-        placeBall(jHipR, poseCurrent.rh, 15 * dScale, cxHalf, cyHalf);
-        placeBall(jKneeL, poseCurrent.lknee, 14 * dScale, cxHalf, cyHalf);
-        placeBall(jKneeR, poseCurrent.rknee, 14 * dScale, cxHalf, cyHalf);
-        placeBall(jAnkleL, poseCurrent.lankle, 12 * dScale, cxHalf, cyHalf);
-        placeBall(jAnkleR, poseCurrent.rankle, 12 * dScale, cxHalf, cyHalf);
+        placeBall(jHipL, hipL, 15 * dScale, cxHalf, cyHalf);
+        placeBall(jHipR, hipR, 15 * dScale, cxHalf, cyHalf);
+        placeBall(jKneeL, kneeL, 14 * dScale, cxHalf, cyHalf);
+        placeBall(jKneeR, kneeR, 14 * dScale, cxHalf, cyHalf);
+        placeBall(jAnkleL, ankleL, 12 * dScale, cxHalf, cyHalf);
+        placeBall(jAnkleR, ankleR, 12 * dScale, cxHalf, cyHalf);
 
         // 9. Chest Arc Reactor Core
         arcReactorMesh.position.set(midShoulders.x - cxHalf, cyHalf - (midShoulders.y * 0.70 + spinePt.y * 0.30), (midShoulders.z || 0) + 26);
@@ -2114,9 +2137,9 @@
         handR.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
 
         // 12. Armored Combat Boots
-        bootL.position.set(poseCurrent.lankle.x - cxHalf, cyHalf - poseCurrent.lankle.y - 12, (poseCurrent.lankle.z || 0) + 14);
+        bootL.position.set(ankleL.x - cxHalf, cyHalf - ankleL.y - 12, (ankleL.z || 0) + 14);
         bootL.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
-        bootR.position.set(poseCurrent.rankle.x - cxHalf, cyHalf - poseCurrent.rankle.y - 12, (poseCurrent.rankle.z || 0) + 14);
+        bootR.position.set(ankleR.x - cxHalf, cyHalf - ankleR.y - 12, (ankleR.z || 0) + 14);
         bootR.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
       } else {
         warriorGroup.visible = false;
@@ -2224,13 +2247,50 @@
 
           const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
 
-          // Strike Zones: Hands must be in active chest/torso zone, not hanging down at lap
-          const inStrikeZoneL = (poseCurrent.lw.y < hipsY - 25) && (poseCurrent.lw.y > poseCurrent.ls.y - 120);
-          const inStrikeZoneR = (poseCurrent.rw.y < hipsY - 25) && (poseCurrent.rw.y > poseCurrent.rs.y - 120);
+          // Hand Motion Vector Components (pixels / second)
+          const vLx = (poseCurrent.lw.x - oldL.x) / dtL;
+          const vLy = (poseCurrent.lw.y - oldL.y) / dtL;
+          const vLz = ((poseCurrent.lw.z || 0) - oldL.z) / dtL;
 
-          // Arm Extension & Forward Drive Checks (tuned for real-world seated webcam)
-          const isDrivingOutL = (extRatioL >= 0.68) && (reachVelL > 85 || forwardDeltaZL > 12 || winVelL > 150);
-          const isDrivingOutR = (extRatioR >= 0.68) && (reachVelR > 85 || forwardDeltaZR > 12 || winVelR > 150);
+          // Forearm Unit Vector (Elbow to Wrist)
+          const fdxL = poseCurrent.lw.x - poseCurrent.le.x;
+          const fdyL = poseCurrent.lw.y - poseCurrent.le.y;
+          const fdzL = (poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0);
+          const flenL = Math.hypot(fdxL, fdyL, fdzL) || 1;
+          const uFxL = fdxL / flenL, uFyL = fdyL / flenL, uFzL = fdzL / flenL;
+
+          // Directional Thrust along forearm extension axis
+          const thrustVelL = (vLx * uFxL) + (vLy * uFyL) + (vLz * uFzL);
+
+          // UPWARD HAND LIFT SUPPRESSION: Raising hand from desk/lap into guard
+          // Screen Y goes downward, so upward movement has oldL.y > poseCurrent.lw.y
+          const isUpwardLiftL = (oldL.y - poseCurrent.lw.y > 35) && (forwardDeltaZL < 14) && (reachVelL < 95);
+
+          // Right Arm Motion & Forearm Projection
+          const vRx = (poseCurrent.rw.x - oldR.x) / dtR;
+          const vRy = (poseCurrent.rw.y - oldR.y) / dtR;
+          const vRz = ((poseCurrent.rw.z || 0) - oldR.z) / dtR;
+
+          const fdxR = poseCurrent.rw.x - poseCurrent.re.x;
+          const fdyR = poseCurrent.rw.y - poseCurrent.re.y;
+          const fdzR = (poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0);
+          const flenR = Math.hypot(fdxR, fdyR, fdzR) || 1;
+          const uFxR = fdxR / flenR, uFyR = fdyR / flenR, uFzR = fdzR / flenR;
+
+          const thrustVelR = (vRx * uFxR) + (vRy * uFyR) + (vRz * uFzR);
+
+          const isUpwardLiftR = (oldR.y - poseCurrent.rw.y > 35) && (forwardDeltaZR < 14) && (reachVelR < 95);
+
+          // Strike Zones: Hands must be in active chest/torso zone, not hanging down at lap
+          const inStrikeZoneL = (poseCurrent.lw.y < hipsY - 20) && (poseCurrent.lw.y > poseCurrent.ls.y - 140);
+          const inStrikeZoneR = (poseCurrent.rw.y < hipsY - 20) && (poseCurrent.rw.y > poseCurrent.rs.y - 140);
+
+          // True Intentional Forward Strikes:
+          // 1) NOT an upward hand lift (zero false triggers when lifting hands)
+          // 2) Arm extended into strike reach (extRatio >= 0.74)
+          // 3) Intentional forward velocity: thrust along forearm > 130 or rapid punch extension
+          const isDrivingOutL = !isUpwardLiftL && (extRatioL >= 0.74) && (thrustVelL > 130 || reachVelL > 130 || (forwardDeltaZL > 16 && reachVelL > 75));
+          const isDrivingOutR = !isUpwardLiftR && (extRatioR >= 0.74) && (thrustVelR > 130 || reachVelR > 130 || (forwardDeltaZR > 16 && reachVelR > 75));
 
           // 1. TAI CHI 10-RING MANDALA SHIELD (Crossed wrists across chest)
           const chestZone = (poseCurrent.lw.y < torsoMidY + 45) && (poseCurrent.rw.y < torsoMidY + 45) &&
@@ -2286,7 +2346,7 @@
             }
 
             // DETECT PULL-BACK: Negative reach velocity, negative forward Z, or reach dropping below peak
-            const isPullingBackL = (reachVelL < -45) || (forwardDeltaZL < -10) || (reach3dL < ringsState.left.peakReach - 20) || (extRatioL < 0.62);
+            const isPullingBackL = (reachVelL < -40) || (forwardDeltaZL < -8) || (reach3dL < ringsState.left.peakReach - 18) || (extRatioL < 0.65);
 
             if (isPullingBackL) {
               ringsState.left.isRetracting = true;
@@ -2294,10 +2354,10 @@
 
             if (ringsState.left.isRetracting) {
               // Magnetically whip back to hand! The faster you pull back, the faster they return!
-              const returnSpeed = Math.max(38, Math.abs(reachVelL) * 0.10);
+              const returnSpeed = Math.max(45, Math.abs(reachVelL) * 0.16);
               ringsState.left.flightDist = Math.max(0, ringsState.left.flightDist - returnSpeed);
 
-              if (ringsState.left.flightDist <= 5) {
+              if (ringsState.left.flightDist <= 10) {
                 ringsState.left.flightDist = 0.0;
                 ringsState.left.isStriking = false;
                 ringsState.left.isRetracting = false;
@@ -2324,17 +2384,17 @@
               ringsState.right.peakReach = reach3dR;
             }
 
-            const isPullingBackR = (reachVelR < -45) || (forwardDeltaZR < -10) || (reach3dR < ringsState.right.peakReach - 20) || (extRatioR < 0.62);
+            const isPullingBackR = (reachVelR < -40) || (forwardDeltaZR < -8) || (reach3dR < ringsState.right.peakReach - 18) || (extRatioR < 0.65);
 
             if (isPullingBackR) {
               ringsState.right.isRetracting = true;
             }
 
             if (ringsState.right.isRetracting) {
-              const returnSpeed = Math.max(38, Math.abs(reachVelR) * 0.10);
+              const returnSpeed = Math.max(45, Math.abs(reachVelR) * 0.16);
               ringsState.right.flightDist = Math.max(0, ringsState.right.flightDist - returnSpeed);
 
-              if (ringsState.right.flightDist <= 5) {
+              if (ringsState.right.flightDist <= 10) {
                 ringsState.right.flightDist = 0.0;
                 ringsState.right.isStriking = false;
                 ringsState.right.isRetracting = false;
