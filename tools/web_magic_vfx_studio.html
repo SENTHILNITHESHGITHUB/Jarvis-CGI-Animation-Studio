@@ -998,6 +998,24 @@
       initialized: false
     }));
 
+    function showQiToast(msg) {
+      let toast = document.getElementById('qiToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'qiToast';
+        toast.style.cssText = 'position:fixed; top:32px; left:50%; transform:translateX(-50%); background:rgba(15, 23, 42, 0.94); border:1.5px solid rgba(245, 158, 11, 0.8); color:#fbbf24; padding:12px 28px; border-radius:30px; font-size:14px; font-weight:800; letter-spacing:1px; z-index:999999; backdrop-filter:blur(20px); box-shadow:0 10px 40px rgba(245, 158, 11, 0.45); pointer-events:none; transition:opacity 0.3s ease, transform 0.3s ease; opacity:0;';
+        document.body.appendChild(toast);
+      }
+      toast.innerText = msg;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) scale(1.05)';
+      setTimeout(() => { if (toast) toast.style.transform = 'translateX(-50%) scale(1.0)'; }, 150);
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        if (toast) toast.style.opacity = '0';
+      }, 2400);
+    }
+
     const ringsState = {
       mode: "SHANG_CHI_GOLD", // "SHANG_CHI_GOLD" (Ta Lo Fire) or "WENWU_CYAN" (Cosmic Lightning)
       summonActive: false,    // Default false: rings immediately locked onto forearms
@@ -1017,6 +1035,8 @@
         this.summonProgress = 0.0;
         this.isLocked = false;
         this.ringLockedFlags.fill(false);
+        showQiToast("⚡ TA LO QI: WEARING TEN RINGS OVER HANDS!");
+        playRingClangSFX(1.1);
         const btn = document.getElementById('btnSummonRings');
         if (btn) {
           btn.innerText = "⚡ RINGS: ENTERING HANDS...";
@@ -1982,6 +2002,11 @@
       if (activeStance.includes("SHANG_CHI") || isOverdrive) {
         ringGroup.visible = true;
 
+        // Measure Body Dimensions FIRST (Depth-Invariant Scale & Stance Anchors)
+        const shoulderW = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 240;
+        const torsoMidY = (poseCurrent.ls.y + poseCurrent.rs.y) * 0.5;
+        const hipsY = (poseCurrent.lh && poseCurrent.rh) ? (poseCurrent.lh.y + poseCurrent.rh.y) * 0.5 : (torsoMidY + shoulderW * 1.35);
+
         // Dynamic 3D Point Lights at Wrists for Real-World Metallic Specular Glints
         pointLightL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 70);
         pointLightR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 70);
@@ -1993,7 +2018,7 @@
 
         // Progress Summon Sequence (Rings flying in & sliding over hands onto forearms)
         if (ringsState.summonActive) {
-          ringsState.summonProgress += 0.009; // ~1.8 seconds full cinematic sequence
+          ringsState.summonProgress += 0.012; // ~1.4 seconds smooth cinematic sequence
           if (ringsState.summonProgress >= 1.0) {
             ringsState.summonActive = false;
             ringsState.isLocked = true;
@@ -2023,7 +2048,7 @@
         ringsState._prevLwZ = poseCurrent.lw.z || 0;
         const punchVel3DL = Math.hypot(speedL, dzL);
 
-        if ((reachVelL > 260 || punchVel3DL > 420) && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive) {
+        if ((reachVelL > 240 || punchVel3DL > 400) && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive) {
           ringsState.strikeL.active = true;
           ringsState.strikeL.progress = 0.0;
           const pdx = poseCurrent.lw.x - poseCurrent.le.x;
@@ -2032,6 +2057,7 @@
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
           ringsState.strikeL.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
+          showQiToast("💥 KUNG FU STRIKE: TEN RINGS LAUNCHED!");
         }
 
         const reachR = Math.hypot(poseCurrent.rw.x - poseCurrent.rs.x, poseCurrent.rw.y - poseCurrent.rs.y);
@@ -2041,7 +2067,7 @@
         ringsState._prevRwZ = poseCurrent.rw.z || 0;
         const punchVel3DR = Math.hypot(speedR, dzR);
 
-        if ((reachVelR > 260 || punchVel3DR > 420) && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
+        if ((reachVelR > 240 || punchVel3DR > 400) && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
           ringsState.strikeR.active = true;
           ringsState.strikeR.progress = 0.0;
           const pdx = poseCurrent.rw.x - poseCurrent.re.x;
@@ -2050,39 +2076,43 @@
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
           ringsState.strikeR.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
+          showQiToast("💥 KUNG FU STRIKE: TEN RINGS LAUNCHED!");
         }
 
         // Gesture Detection 2: Tai Chi Dragon Mandala Shield (Crossed Wrists across chest)
         const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
-        const wristsRaised = (poseCurrent.lw.y < poseCurrent.lh.y - 20) && (poseCurrent.rw.y < poseCurrent.rh.y - 20);
+        const wristsRaised = (poseCurrent.lw.y < hipsY + 60) && (poseCurrent.rw.y < hipsY + 60);
         const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x); // Left wrist crossed over right
-        ringsState.shieldActive = ((wristDist < 130 || (wristsCrossed && wristDist < 220)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive);
+        ringsState.shieldActive = ((wristDist < 135 || (wristsCrossed && wristDist < 230)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive);
 
         // Gesture Detection 3: Qi Color Shift (Clapping / Touching Palms Together)
-        if (wristDist < 80 && !ringsState._clapCooldown) {
+        if (wristDist < 85 && !ringsState._clapCooldown) {
           ringsState._clapCooldown = true;
           ringsState.toggleMode();
           playRingClangSFX(1.8);
+          showQiToast(ringsState.mode === 'SHANG_CHI_GOLD' ? "🔥 QI: TA LO GOLDEN DRAGON" : "⚡ QI: WENWU COSMIC LIGHTNING");
           setTimeout(() => { ringsState._clapCooldown = false; }, 1200);
         }
 
-        // Gesture Detection 4: Open Palms Forward / Summon Stance (Cinematic Wear of Rings)
+        // Gesture Detection 4: Open Palms Forward / Summon Stance (Cinematic Wear of Ten Rings)
         if (!ringsState._summonCooldown) ringsState._summonCooldown = 0;
         if (ringsState._summonCooldown > 0) ringsState._summonCooldown--;
 
-        const wristsApart = wristDist > 220 && wristDist < 680;
-        const palmsForward = (poseCurrent.lindex && poseCurrent.rindex) ?
-          (poseCurrent.lindex.y < poseCurrent.lw.y + 20 && poseCurrent.rindex.y < poseCurrent.rw.y + 20) : true;
-        const armsExtended = (reachL > shoulderW * 0.65 && reachR > shoulderW * 0.65);
+        const wristsApart = wristDist > 140 && wristDist < 850;
+        const palmsUp = (poseCurrent.lindex && poseCurrent.rindex) ?
+          (poseCurrent.lindex.y < poseCurrent.lw.y + 45 && poseCurrent.rindex.y < poseCurrent.rw.y + 45) : true;
+        const handsEngaged = (reachL > shoulderW * 0.40 || reachR > shoulderW * 0.40);
 
-        if (wristsApart && wristsRaised && palmsForward && armsExtended && !ringsState.summonActive && ringsState._summonCooldown === 0) {
-          ringsState._summonCooldown = 180; // ~3 second debounce
+        // Outward sweep velocity (Qi gathering motion)
+        const outwardSpread = (wristDist - (ringsState._prevWristDist || wristDist)) * 30;
+        ringsState._prevWristDist = wristDist;
+
+        const isSummonPosture = wristsApart && wristsRaised && (palmsUp || outwardSpread > 160) && handsEngaged && !wristsCrossed;
+
+        if (isSummonPosture && !ringsState.summonActive && ringsState._summonCooldown === 0) {
+          ringsState._summonCooldown = 150; // ~2.5 second debounce
           ringsState.triggerSummon();
-          playRingClangSFX(1.1);
         }
-
-        // Measure Shoulder Width for Depth-Invariant Scale
-        const shoulderW = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 240;
 
         const arms = [
           {
@@ -2135,6 +2165,10 @@
             hdy / handLen,
             (hdz / handLen) + 0.15
           ).normalize();
+          const safeHandDir = armDir3D.clone();
+          if (handLen > 20) {
+            safeHandDir.lerp(handDir3D, 0.75).normalize();
+          }
 
           // Punch Direction Vector (Fist forward thrust)
           const punchDir = arm.strike.active ? arm.strike.dir : handDir3D;
@@ -2185,28 +2219,28 @@
               const tipZ = (arm.wrist.z || 0) + 30;
 
               if (easeU < 0.22) {
-                // Phase 1: Swooping from constellation down to Fingertips
+                // Phase 1: Swooping from celestial space down to Fingertips
                 const subU = easeU / 0.22;
                 const haloAngle = timeVal * 2.0 + ringIdx * 0.628;
-                const startX = arm.wrist.x + arm.sign * (70 + k * 16) + Math.cos(haloAngle) * 20;
-                const startY = arm.wrist.y + 30 + Math.sin(haloAngle) * 20;
-                const startZ = 60 + Math.sin(haloAngle * 2) * 15;
+                const startX = arm.wrist.x + arm.sign * (140 + k * 22) + Math.cos(haloAngle) * 35;
+                const startY = arm.wrist.y - 120 + Math.sin(haloAngle) * 30; // Swoop in from above/lateral
+                const startZ = 90 + Math.sin(haloAngle * 2) * 25;
 
                 targetX = startX + (tipX - startX) * subU;
                 targetY = startY + (tipY - startY) * subU;
                 targetZ = startZ + (tipZ - startZ) * subU;
                 targetScale = baseRingRad * 1.15;
-                targetDir.copy(handDir3D);
+                targetDir.copy(safeHandDir);
               } else if (easeU < 0.65) {
                 // Phase 2: SLIDING VISIBLY OVER THE FINGERS, PALM & KNUCKLES
-                // Ring EXPANDS by 35% so it visibly slips OVER the wide knuckles and thumb!
+                // Ring EXPANDS by 40% so it visibly slips OVER the wide knuckles and thumb!
                 const subU = (easeU - 0.22) / 0.43;
                 targetX = tipX + (arm.wrist.x - tipX) * subU;
                 targetY = tipY + (arm.wrist.y - tipY) * subU;
                 targetZ = tipZ + ((arm.wrist.z || 0) + 18 - tipZ) * subU;
                 // Peak expansion at palm center (subU = 0.5)
-                targetScale = baseRingRad * (1.10 + Math.sin(subU * Math.PI) * 0.35);
-                targetDir.copy(handDir3D);
+                targetScale = baseRingRad * (1.10 + Math.sin(subU * Math.PI) * 0.40);
+                targetDir.copy(safeHandDir);
               } else if (easeU < 1.0) {
                 // Phase 3: SLIDING DOWN FOREARM FROM WRIST TO TARGET RESTING SLOT
                 // Contracts snugly down to exact forearm muscular taper!
@@ -2215,7 +2249,7 @@
                 targetY = arm.wrist.y + (targetSlotY - arm.wrist.y) * subU;
                 targetZ = (arm.wrist.z || 0) + (targetSlotZ - (arm.wrist.z || 0)) * subU;
                 targetScale = baseRingRad * (1.25 * (1.0 - subU) + taperScale * subU);
-                targetDir.lerpVectors(handDir3D, armDir3D, subU).normalize();
+                targetDir.lerpVectors(safeHandDir, armDir3D, subU).normalize();
               } else {
                 // Phase 4: Locked into Resting Slot
                 targetX = targetSlotX;
