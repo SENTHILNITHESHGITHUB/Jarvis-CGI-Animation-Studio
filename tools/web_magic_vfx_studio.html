@@ -228,6 +228,10 @@
   <div class="vignette"></div>
 
   <!-- HUD Header -->
+  <div id="standbyBanner" style="display:none; position:fixed; top:78px; left:50%; transform:translateX(-50%); background:rgba(220, 38, 38, 0.92); border:1px solid rgba(248, 113, 113, 0.6); color:#fff; padding:10px 24px; border-radius:30px; z-index:100; font-size:12px; font-weight:700; letter-spacing:0.5px; box-shadow:0 12px 35px rgba(220,38,38,0.7); backdrop-filter:blur(16px); gap:10px; align-items:center;">
+    <span style="font-size:16px;">📱</span>
+    <span>DROIDCAM STANDBY DETECTED: Unlock phone screen & keep DroidCam app open in foreground to stream live camera video!</span>
+  </div>
   <div class="hud-top">
     <div class="brand">
       <div class="arc-badge"></div>
@@ -2296,44 +2300,152 @@
     let isProcessingFrame = false;
 
     function enableDemoMode() {
-      if (isDemoMode) return;
       isDemoMode = true;
       btnSource.innerText = "🖼️ SOURCE: 4K DEMO SHOT";
       btnSource.style.background = "rgba(168, 85, 247, 0.2)";
       btnSource.style.borderColor = "rgba(168, 85, 247, 0.6)";
       btnSource.style.color = "#c084fc";
 
+      const standbyBanner = document.getElementById('standbyBanner');
+      if (standbyBanner) standbyBanner.style.display = 'none';
+
+      let demoCanvas = document.getElementById('demoCanvas');
+      if (!demoCanvas) {
+        demoCanvas = document.createElement('canvas');
+        demoCanvas.id = 'demoCanvas';
+        demoCanvas.style.position = 'fixed';
+        demoCanvas.style.inset = '0';
+        demoCanvas.style.width = '100vw';
+        demoCanvas.style.height = '100vh';
+        demoCanvas.style.objectFit = 'cover';
+        demoCanvas.style.transform = 'scaleX(-1)';
+        demoCanvas.style.zIndex = '1';
+        demoCanvas.style.filter = 'contrast(1.18) saturate(1.22) brightness(0.85)';
+        document.body.prepend(demoCanvas);
+      }
+      demoCanvas.style.display = 'block';
+      video.style.display = 'none';
+
       const demoImg = new Image();
       demoImg.crossOrigin = "anonymous";
       demoImg.src = '/assets/real_webcam_test.jpg';
       demoImg.onload = () => {
-        const demoCanvas = document.createElement('canvas');
         demoCanvas.width = 1280; demoCanvas.height = 720;
         const dCtx = demoCanvas.getContext('2d');
         dCtx.drawImage(demoImg, 0, 0, 1280, 720);
-
-        video.style.display = 'none';
-        demoCanvas.id = 'demoCanvas';
-        document.body.prepend(demoCanvas);
 
         trackCtx.drawImage(demoCanvas, 0, 0, 320, 180);
         pose.send({ image: trackCanvas }).catch(e => console.warn(e));
       };
     }
 
+    async function startCamera(preferredDeviceId = null) {
+      isDemoMode = false;
+      const demoCanvas = document.getElementById('demoCanvas');
+      if (demoCanvas) demoCanvas.style.display = 'none';
+      video.style.display = 'block';
+
+      try {
+        let videoConstraints = { width: { ideal: 1280 }, height: { ideal: 720 } };
+
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          console.log("Detected video devices:", videoDevices);
+
+          let targetDevice = videoDevices.find(d => d.deviceId === preferredDeviceId);
+          if (!targetDevice) {
+            // Prioritize DroidCam or active external webcam
+            targetDevice = videoDevices.find(d => /droidcam/i.test(d.label)) || videoDevices[videoDevices.length - 1];
+          }
+
+          if (targetDevice && targetDevice.deviceId) {
+            videoConstraints = { deviceId: { exact: targetDevice.deviceId } };
+            const camLabel = targetDevice.label || 'DROIDCAM (LIVE)';
+            btnSource.innerText = `📹 ${camLabel.replace(/\s*\(.*\)/, '').toUpperCase()}`;
+          } else {
+            btnSource.innerText = "📹 LIVE WEBCAM";
+          }
+        }
+
+        btnSource.style.background = "rgba(16, 185, 129, 0.2)";
+        btnSource.style.borderColor = "rgba(16, 185, 129, 0.6)";
+        btnSource.style.color = "#34d399";
+
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(t => t.stop());
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+        video.srcObject = stream;
+        await video.play();
+
+        if ('requestVideoFrameCallback' in video) {
+          video.requestVideoFrameCallback(processVideoFrame);
+        } else {
+          requestAnimationFrame(processVideoFrame);
+        }
+      } catch (err) {
+        console.warn("Webcam start failed, trying generic video stream:", err);
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          video.srcObject = fallbackStream;
+          await video.play();
+          btnSource.innerText = "📹 LIVE WEBCAM";
+          btnSource.style.background = "rgba(16, 185, 129, 0.2)";
+          btnSource.style.borderColor = "rgba(16, 185, 129, 0.6)";
+          btnSource.style.color = "#34d399";
+
+          if ('requestVideoFrameCallback' in video) {
+            video.requestVideoFrameCallback(processVideoFrame);
+          } else {
+            requestAnimationFrame(processVideoFrame);
+          }
+        } catch (fallbackErr) {
+          console.warn("All webcam attempts failed or busy; switching to 4K Demo Shot:", fallbackErr);
+          enableDemoMode();
+        }
+      }
+    }
+
     if (btnSource) {
       btnSource.addEventListener('click', () => {
-        if (!isDemoMode) enableDemoMode();
-        else window.location.reload();
+        if (!isDemoMode) {
+          enableDemoMode();
+        } else {
+          startCamera();
+        }
       });
     }
 
-    // High-Speed 60 FPS Video Frame Processor
+    // High-Speed 60 FPS Video Frame Processor with DroidCam Standby Detection
+    let frameAnalysisCount = 0;
     async function processVideoFrame() {
       if (!isDemoMode && video.readyState >= 2 && video.videoWidth > 0 && !isProcessingFrame) {
         isProcessingFrame = true;
         try {
           trackCtx.drawImage(video, 0, 0, 320, 180);
+
+          // Detect DroidCam Cyan Standby Card every 30 frames
+          frameAnalysisCount++;
+          if (frameAnalysisCount % 30 === 0) {
+            const sample = trackCtx.getImageData(150, 80, 10, 10).data;
+            const r0 = sample[0], g0 = sample[1], b0 = sample[2];
+            let isUniform = true;
+            for (let i = 4; i < sample.length; i += 4) {
+              if (Math.abs(sample[i] - r0) > 4 || Math.abs(sample[i+1] - g0) > 4 || Math.abs(sample[i+2] - b0) > 4) {
+                isUniform = false;
+                break;
+              }
+            }
+            // DroidCam Cyan Standby color check [90, 190, 230]
+            const isDroidCamCyan = isUniform && (Math.abs(r0 - 90) < 35 && Math.abs(g0 - 190) < 35 && Math.abs(b0 - 230) < 35);
+            const banner = document.getElementById('standbyBanner');
+            if (banner) {
+              banner.style.display = isDroidCamCyan ? 'flex' : 'none';
+            }
+          }
+
           await pose.send({ image: trackCanvas });
         } catch(err) {
           // Gracefully skip dropped frames
@@ -2349,33 +2461,8 @@
       }
     }
 
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
-      })
-      .then(stream => {
-        video.srcObject = stream;
-        video.play().then(() => {
-          if ('requestVideoFrameCallback' in video) {
-            video.requestVideoFrameCallback(processVideoFrame);
-          } else {
-            requestAnimationFrame(processVideoFrame);
-          }
-        }).catch(e => {
-          console.warn("Autoplay blocked; click screen to play video:", e);
-          document.body.addEventListener('click', () => {
-            video.play();
-            processVideoFrame();
-          }, { once: true });
-        });
-      })
-      .catch(err => {
-        console.warn("Webcam access rejected or busy; automatically switching to 4K Demo Shot:", err);
-        enableDemoMode();
-      });
-    } else {
-      enableDemoMode();
-    }
+    // Launch camera on startup
+    startCamera();
   </script>
 </body>
 </html>
