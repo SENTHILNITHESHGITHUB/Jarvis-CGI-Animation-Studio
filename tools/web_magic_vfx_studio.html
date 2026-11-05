@@ -2066,84 +2066,105 @@
           }
         }
 
-        // Advance Strike Projectiles (Smooth Outward Punch & Inward Whip Return)
+        // Advance Strike Projectiles (Visible 0.92s Cinematic Outward Blast & Magnetic Whip Return)
         if (ringsState.strikeL.active) {
-          ringsState.strikeL.progress += 0.038;
+          ringsState.strikeL.progress += 0.018;
           if (ringsState.strikeL.progress >= 1.0) ringsState.strikeL.active = false;
         }
         if (ringsState.strikeR.active) {
-          ringsState.strikeR.progress += 0.038;
+          ringsState.strikeR.progress += 0.018;
           if (ringsState.strikeR.progress >= 1.0) ringsState.strikeR.active = false;
         }
 
-        // Gesture Biometrics (Reach, 3D Velocity & Distance)
-        const reachL = Math.hypot(poseCurrent.lw.x - poseCurrent.ls.x, poseCurrent.lw.y - poseCurrent.ls.y);
-        const reachVelL = (reachL - (ringsState._prevReachL || reachL)) * 30;
-        ringsState._prevReachL = reachL;
-        const dzL = ((poseCurrent.lw.z || 0) - (ringsState._prevLwZ || (poseCurrent.lw.z || 0))) * 600;
-        ringsState._prevLwZ = poseCurrent.lw.z || 0;
-        const punchVel3DL = Math.hypot(speedL, dzL);
+        // Multi-Frame Circular History Buffer (120ms window eliminates all MediaPipe sampling jitter)
+        if (!ringsState._histL) ringsState._histL = [];
+        if (!ringsState._histR) ringsState._histR = [];
+        const nowMs = performance.now();
+        ringsState._histL.push({ x: poseCurrent.lw.x, y: poseCurrent.lw.y, z: poseCurrent.lw.z || 0, t: nowMs });
+        if (ringsState._histL.length > 7) ringsState._histL.shift();
+        ringsState._histR.push({ x: poseCurrent.rw.x, y: poseCurrent.rw.y, z: poseCurrent.rw.z || 0, t: nowMs });
+        if (ringsState._histR.length > 7) ringsState._histR.shift();
 
+        const oldL = ringsState._histL[0];
+        const dtL = Math.max(0.04, (nowMs - oldL.t) / 1000);
+        const winVelL = Math.hypot(poseCurrent.lw.x - oldL.x, poseCurrent.lw.y - oldL.y, ((poseCurrent.lw.z || 0) - oldL.z) * 500) / dtL;
+
+        const oldR = ringsState._histR[0];
+        const dtR = Math.max(0.04, (nowMs - oldR.t) / 1000);
+        const winVelR = Math.hypot(poseCurrent.rw.x - oldR.x, poseCurrent.rw.y - oldR.y, ((poseCurrent.rw.z || 0) - oldR.z) * 500) / dtR;
+
+        // Anatomical Arm Reaches & Extension Ratios
+        const totalArmL = (Math.hypot(poseCurrent.lw.x - poseCurrent.le.x, poseCurrent.lw.y - poseCurrent.le.y) +
+                           Math.hypot(poseCurrent.le.x - poseCurrent.ls.x, poseCurrent.le.y - poseCurrent.ls.y)) || 180;
+        const reachL = Math.hypot(poseCurrent.lw.x - poseCurrent.ls.x, poseCurrent.lw.y - poseCurrent.ls.y);
+        const extRatioL = reachL / totalArmL; // ~0.45 bent, 0.75+ straight punch
+
+        const totalArmR = (Math.hypot(poseCurrent.rw.x - poseCurrent.re.x, poseCurrent.rw.y - poseCurrent.re.y) +
+                           Math.hypot(poseCurrent.re.x - poseCurrent.rs.x, poseCurrent.re.y - poseCurrent.rs.y)) || 180;
         const reachR = Math.hypot(poseCurrent.rw.x - poseCurrent.rs.x, poseCurrent.rw.y - poseCurrent.rs.y);
-        const reachVelR = (reachR - (ringsState._prevReachR || reachR)) * 30;
-        ringsState._prevReachR = reachR;
-        const dzR = ((poseCurrent.rw.z || 0) - (ringsState._prevRwZ || (poseCurrent.rw.z || 0))) * 600;
-        ringsState._prevRwZ = poseCurrent.rw.z || 0;
-        const punchVel3DR = Math.hypot(speedR, dzR);
+        const extRatioR = reachR / totalArmR;
+
+        // Reach Expansion Velocity over 120ms
+        const reachVelL = (reachL - (oldL._reach || reachL)) / dtL;
+        poseCurrent.lw._reach = reachL;
+        const reachVelR = (reachR - (oldR._reach || reachR)) / dtR;
+        poseCurrent.rw._reach = reachR;
 
         const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
-        const wristsRaised = (poseCurrent.lw.y < hipsY + 70) && (poseCurrent.rw.y < hipsY + 70);
-        const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x);
+        const inTorsoZone = (poseCurrent.lw.y < hipsY + 80) && (poseCurrent.rw.y < hipsY + 80);
+        const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x) || (poseCurrent.rw.x < poseCurrent.lw.x - 30);
 
-        // GESTURE 1: DUAL PALM DRAGON BLAST (Both hands thrusting forward simultaneously)
-        const isDualThrust = (reachVelL > 110 && reachVelR > 110) || (punchVel3DL > 180 && punchVel3DR > 180);
-        if (isDualThrust && !ringsState.strikeL.active && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
+        // GESTURE 1: TAI CHI DRAGON MANDALA DEFENSE SHIELD (Crossed Wrists across chest)
+        // Solid Hysteresis Latch: Activates on close/crossed wrists; STAYS ACTIVE until clearly uncrossed!
+        const isShieldTrigger = (wristDist < 195 || (wristsCrossed && wristDist < 290)) && inTorsoZone && !ringsState.summonActive;
+        if (isShieldTrigger && !ringsState.shieldActive && !ringsState.strikeL.active && !ringsState.strikeR.active) {
+          ringsState.shieldActive = true;
+          playRingClangSFX(1.3);
+          showQiToast("🛡️ TAI CHI MANDALA: DRAGON DEFENSE SHIELD!");
+        } else if (ringsState.shieldActive && (wristDist > 310 || !inTorsoZone)) {
+          // Deactivates ONLY when hands clearly separate past 310px
+          ringsState.shieldActive = false;
+        }
+
+        // GESTURE 2: DUAL PALM DRAGON BLAST (Both hands pushing forward together)
+        const isDualThrust = (extRatioL > 0.68 && extRatioR > 0.68 && (reachVelL > 80 || reachVelR > 80 || winVelL > 160 || winVelR > 160));
+        if (isDualThrust && !ringsState.strikeL.active && !ringsState.strikeR.active && !ringsState.shieldActive && !ringsState.summonActive) {
           ringsState.strikeL.active = true; ringsState.strikeL.progress = 0.0;
           ringsState.strikeR.active = true; ringsState.strikeR.progress = 0.0;
           const pdxL = poseCurrent.lw.x - poseCurrent.le.x, pdyL = poseCurrent.le.y - poseCurrent.lw.y;
           const pdxR = poseCurrent.rw.x - poseCurrent.re.x, pdyR = poseCurrent.re.y - poseCurrent.rw.y;
-          ringsState.strikeL.dir.set(pdxL, pdyL, 0.40).normalize();
-          ringsState.strikeR.dir.set(pdxR, pdyR, 0.40).normalize();
+          ringsState.strikeL.dir.set(pdxL, pdyL, 0.45).normalize();
+          ringsState.strikeR.dir.set(pdxR, pdyR, 0.45).normalize();
           playRingClangSFX(1.6);
           showQiToast("🐉 DUAL DRAGON BLAST: 10 RINGS BARRAGE!");
         }
 
-        // GESTURE 2: LEFT FIST KINETIC PUNCH STRIKE
-        const isPunchL = (reachVelL > 120 || punchVel3DL > 180 || speedL > 220);
-        if (isPunchL && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive && !isDualThrust) {
+        // GESTURE 3: LEFT FIST KINETIC PUNCH STRIKE
+        const isPunchL = (extRatioL > 0.68 && (reachVelL > 90 || winVelL > 150)) || (winVelL > 240);
+        if (isPunchL && !ringsState.strikeL.active && !ringsState.shieldActive && !ringsState.summonActive && !isDualThrust) {
           ringsState.strikeL.active = true;
           ringsState.strikeL.progress = 0.0;
           const pdx = poseCurrent.lw.x - poseCurrent.le.x;
           const pdy = poseCurrent.le.y - poseCurrent.lw.y;
-          const pdz = ((poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0)) + 0.35;
+          const pdz = ((poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0)) + 0.38;
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
           ringsState.strikeL.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
           showQiToast("💥 KUNG FU STRIKE: LEFT FIST BLAST!");
         }
 
-        // GESTURE 3: RIGHT FIST KINETIC PUNCH STRIKE
-        const isPunchR = (reachVelR > 120 || punchVel3DR > 180 || speedR > 220);
-        if (isPunchR && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive && !isDualThrust) {
+        // GESTURE 4: RIGHT FIST KINETIC PUNCH STRIKE
+        const isPunchR = (extRatioR > 0.68 && (reachVelR > 90 || winVelR > 150)) || (winVelR > 240);
+        if (isPunchR && !ringsState.strikeR.active && !ringsState.shieldActive && !ringsState.summonActive && !isDualThrust) {
           ringsState.strikeR.active = true;
           ringsState.strikeR.progress = 0.0;
           const pdx = poseCurrent.rw.x - poseCurrent.re.x;
           const pdy = poseCurrent.re.y - poseCurrent.rw.y;
-          const pdz = ((poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0)) + 0.35;
+          const pdz = ((poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0)) + 0.38;
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
           ringsState.strikeR.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
           showQiToast("💥 KUNG FU STRIKE: RIGHT FIST BLAST!");
-        }
-
-        // GESTURE 4: TAI CHI DRAGON MANDALA DEFENSE SHIELD (Crossed Wrists across chest)
-        const isShieldPosture = (wristDist < 160 || (wristsCrossed && wristDist < 260)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive;
-        if (isShieldPosture && !ringsState.shieldActive) {
-          ringsState.shieldActive = true;
-          playRingClangSFX(1.25);
-          showQiToast("🛡️ TAI CHI MANDALA: DRAGON DEFENSE SHIELD!");
-        } else if (!isShieldPosture && ringsState.shieldActive) {
-          ringsState.shieldActive = false;
         }
 
         // GESTURE 5: QI COLOR SHIFT (Clapping / Touching Palms Together)
@@ -2159,19 +2180,19 @@
         if (!ringsState._summonCooldown) ringsState._summonCooldown = 0;
         if (ringsState._summonCooldown > 0) ringsState._summonCooldown--;
 
-        const wristsApart = wristDist > 140 && wristDist < 880;
+        const wristsApart = wristDist > 200 && wristDist < 900;
         const palmsUp = (poseCurrent.lindex && poseCurrent.rindex) ?
-          (poseCurrent.lindex.y < poseCurrent.lw.y + 50 && poseCurrent.rindex.y < poseCurrent.rw.y + 50) : true;
-        const handsEngaged = (reachL > shoulderW * 0.35 || reachR > shoulderW * 0.35);
+          (poseCurrent.lindex.y < poseCurrent.lw.y + 55 && poseCurrent.rindex.y < poseCurrent.rw.y + 55) : true;
+        const handsExtended = (reachL > shoulderW * 0.35 || reachR > shoulderW * 0.35);
 
         // Outward sweep velocity (Qi gathering motion)
         const outwardSpread = (wristDist - (ringsState._prevWristDist || wristDist)) * 30;
         ringsState._prevWristDist = wristDist;
 
-        const isSummonPosture = wristsApart && wristsRaised && (palmsUp || outwardSpread > 140) && handsEngaged && !wristsCrossed && !ringsState.shieldActive;
+        const isSummonPosture = wristsApart && inTorsoZone && (palmsUp || outwardSpread > 120) && handsExtended && !ringsState.shieldActive;
 
         if (isSummonPosture && !ringsState.summonActive && ringsState._summonCooldown === 0) {
-          ringsState._summonCooldown = 75; // ~1.2 second debounce
+          ringsState._summonCooldown = 65; // ~1.0 second debounce
           ringsState.triggerSummon();
         }
 
