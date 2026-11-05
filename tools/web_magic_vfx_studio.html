@@ -79,32 +79,10 @@
       pointer-events: none;
     }
 
-    /* Cinematic Film Vignette & Twilight Atmosphere */
-    .vignette {
-      position: fixed; inset: 0;
-      background: radial-gradient(ellipse at center, transparent 35%, rgba(1, 4, 10, 0.88) 100%);
-      pointer-events: none; z-index: 5;
+    /* 100% Immersive Fullscreen AR View - Letterbox, Vignette & Grain Disabled */
+    .vignette, .film-grain, .cinema-bar-top, .cinema-bar-bottom {
+      display: none !important;
     }
-
-    /* Higgsfield 35mm Film Grain Simulation */
-    .film-grain {
-      position: fixed; inset: 0;
-      pointer-events: none;
-      z-index: 6;
-      opacity: 0.12;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    }
-
-    /* 2.39:1 CinemaScope Anamorphic Letterbox Bars */
-    .cinema-bar-top, .cinema-bar-bottom {
-      position: fixed; left: 0; right: 0;
-      background: #000;
-      z-index: 8;
-      pointer-events: none;
-      height: 4.8vh;
-    }
-    .cinema-bar-top { top: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
-    .cinema-bar-bottom { bottom: 0; border-top: 1px solid rgba(255, 255, 255, 0.14); }
 
     /* Top Stark MoCap Cinema HUD */
     .hud-top {
@@ -117,6 +95,12 @@
       padding: 12px 24px;
       z-index: 10;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .hud-top.hud-hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateY(-24px) !important;
     }
 
     .brand { display: flex; align-items: center; gap: 14px; }
@@ -178,6 +162,12 @@
       max-width: 95vw; overflow-x: auto;
       scrollbar-width: none;
       -ms-overflow-style: none;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .hud-dock.hud-hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 24px) !important;
     }
     .hud-dock::-webkit-scrollbar {
       display: none;
@@ -252,6 +242,8 @@
       <div class="badge badge-interactive" id="btnCalibrate" style="background:rgba(16, 185, 129, 0.2); border-color:rgba(16, 185, 129, 0.7); color:#34d399;" title="Auto Proportion Calibration Status">🎯 CALIB: 100%</div>
       <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
       <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
+      <div class="badge badge-interactive" id="btnFullscreen" style="background:rgba(59, 130, 246, 0.22); border-color:rgba(59, 130, 246, 0.7); color:#60a5fa; font-weight:800;" title="Toggle Fullscreen (Hotkey [F])">⛶ FULLSCREEN [F]</div>
+      <div class="badge badge-interactive" id="btnToggleHud" style="background:rgba(255, 255, 255, 0.12); border-color:rgba(255, 255, 255, 0.35); color:#e2e8f0; font-weight:700;" title="Toggle HUD Auto-Hide (Hotkey [H])">👁️ HUD [H]</div>
       <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.5); color:#38bdf8;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: OFF</div>
       <div class="badge badge-interactive" id="btnInspectProp" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Open 360° 3D Movie Prop Inspector (Drag & Zoom)">🔍 3D PROP INSPECT</div>
       <div class="badge badge-interactive" id="btnOmniRoute" style="background:rgba(99, 102, 241, 0.18); border-color:rgba(99, 102, 241, 0.6); color:#a5b4fc;" title="OmniRoute AI Gateway Online (Port 20128) - Click to trigger AI Director Cue">🌐 OMNIROUTE: ONLINE (20128)</div>
@@ -994,9 +986,10 @@
     // -------------------------------------------------------------------------
     const ringsState = {
       mode: "SHANG_CHI_GOLD", // "SHANG_CHI_GOLD" (Ta Lo Fire) or "WENWU_CYAN" (Cosmic Lightning)
-      summonActive: true,      // Active cinematic hand-entry sequence
-      summonProgress: 0.0,    // 0.0 -> 1.0
-      isLocked: false,
+      summonActive: false,    // Default false: rings immediately locked onto forearms
+      summonProgress: 1.0,    // 1.0 = fully on arms
+      isLocked: true,         // Default true: tracking arms from frame 1
+      strikeEnabled: false,   // Prevents rings from detaching during normal movements
       
       // Strike projectile states (Left and Right punch launch)
       strikeL: { active: false, progress: 0.0, dir: new THREE.Vector3() },
@@ -1545,26 +1538,13 @@
     let shockwaves = [];
 
     function triggerShockwave(x, y, maxRadius = 260, color = '255, 180, 20') {
-      shockwaves.push({
-        x: x, y: y,
-        radius: 10,
-        maxRadius: maxRadius,
-        color: color,
-        alpha: 1.0
-      });
+      // Disabled per user request: Eliminates all expanding circular wave outlines
+      return;
     }
 
     function applyPhotometricLight(cx, cy, radius, colorRgb, intensity = 0.5) {
-      const flicker = 1.0 + 0.16 * Math.sin(timeVal * 16) + 0.08 * Math.cos(timeVal * 25);
-      const grad = lightCtx.createRadialGradient(cx, cy, 0, cx, cy, radius * flicker);
-      grad.addColorStop(0, `rgba(255, 240, 200, ${0.98 * intensity})`);
-      grad.addColorStop(0.28, `rgba(${colorRgb}, ${0.75 * intensity})`);
-      grad.addColorStop(0.70, `rgba(${colorRgb}, ${0.28 * intensity})`);
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      lightCtx.fillStyle = grad;
-      lightCtx.beginPath();
-      lightCtx.arc(cx, cy, radius * flicker, 0, Math.PI * 2);
-      lightCtx.fill();
+      // Disabled per user request: Eliminates all orange lighting balls across video
+      return;
     }
 
     // Leaping Golden Plasma Arc between wrists when palms are brought close
@@ -1841,8 +1821,8 @@
         heatTurb.setAttribute('baseFrequency', `${0.035 + 0.006 * Math.sin(timeVal * 4)} ${0.07 + 0.012 * Math.cos(timeVal * 5)}`);
       }
 
-      // Smooth Lerp Towards Anatomical MoCap Targets (3D X, Y, Z)
-      const LERP = 0.42;
+      // Snappy, immediate 1:1 motion capture response
+      const LERP = 0.85;
       for (const k in mocapJoints) {
         if (typeof mocapJoints[k] === 'object') {
           poseCurrent[k].x += (mocapJoints[k].x - poseCurrent[k].x) * LERP;
@@ -1878,27 +1858,7 @@
       lightCtx.clearRect(0, 0, lightCanvas.width, lightCanvas.height);
       hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
 
-      // Render Dynamic Motion Ribbons
-      drawMotionRibbon(historyL, '255, 140, 20');
-      drawMotionRibbon(historyR, '255, 140, 20');
-
-      // Render Shockwaves
-      for (let i = shockwaves.length - 1; i >= 0; i--) {
-        const sw = shockwaves[i];
-        sw.radius += 16;
-        sw.alpha -= 0.055;
-        if (sw.alpha <= 0) {
-          shockwaves.splice(i, 1);
-          continue;
-        }
-        hudCtx.save();
-        hudCtx.strokeStyle = `rgba(${sw.color}, ${sw.alpha})`;
-        hudCtx.lineWidth = 6 * sw.alpha + 2;
-        hudCtx.beginPath();
-        hudCtx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
-        hudCtx.stroke();
-        hudCtx.restore();
-      }
+      // Motion ribbons and shockwaves removed per user request for pure, clean video
 
       // Render MoCap Skeletal Rig Overlay
       drawMoCapSkeleton(poseCurrent);
@@ -2210,18 +2170,13 @@
           const dy = arm.elbow.y - arm.wrist.y;
           const dz = (arm.wrist.z || 0) - (arm.elbow.z || 0);
           const armLen = Math.hypot(dx, dy) || 1;
-          const armLen3D = Math.hypot(dx, dy, dz) || 1;
+          const boneLen3D = Math.hypot(dx, dy, dz) || 1;
 
-          // Authentic Shang-Chi Kung Fu 3D Ring Orientation:
-          // In martial arts, forearms naturally angle forward 35-45 degrees towards the camera.
-          // By giving the ring normal an intentional forward Z component, the rings are NEVER viewed edge-on
-          // as flat slits — the circular opening, brushed antique copper bevels, and recessed silver Damascus runes
-          // are always visible in rich three-dimensional volume!
-          const forwardPitch = 0.62;
+          // Authentic 3D Ring Orientation aligned directly with physical forearm bone vector
           const armDir3D = new THREE.Vector3(
-            (dx / armLen) * 0.72,
-            (dy / armLen) * 0.72,
-            forwardPitch
+            dx / boneLen3D,
+            dy / boneLen3D,
+            (dz / boneLen3D) + 0.15
           ).normalize();
 
           // Hand vector for entering fingertips & sliding over palm
@@ -2234,24 +2189,25 @@
             0.65
           ).normalize();
 
-          // Movie-Accurate Anatomical Arm Sizing & Proportions
-          const ringRad = Math.max(44, armLen * 0.27);
+          // Movie-Accurate Anatomical Forearm Ring Sizing (Snug, realistic fit on human arms)
+          const ringRad = Math.max(34, armLen * 0.19);
 
           for (let k = 0; k < 5; k++) {
             const ringIdx = arm.offset + k;
             const ring = tenRings[ringIdx];
 
-            // Anatomical spacing: 5 rings distributed evenly with natural forearm taper
-            const slotFrac = 0.18 + k * 0.17;
+            // 5 rings distributed evenly along the forearm with natural anatomical spacing
+            const slotFrac = 0.22 + k * 0.14;
             const targetSlotX = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * slotFrac;
             const targetSlotY = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * slotFrac;
+            const targetSlotZ = (arm.elbow.z || 0) + ((arm.wrist.z || 0) - (arm.elbow.z || 0)) * slotFrac + 15;
 
-            // Forearm thickness taper (wider at elbow k=0, tapering towards wrist k=4)
-            const taperScale = 1.05 - k * 0.025;
+            // Forearm thickness taper (wider at elbow k=0, tapering down towards wrist k=4)
+            const taperScale = 1.08 - k * 0.04;
 
             let curX = targetSlotX;
             let curY = targetSlotY;
-            let curZ = 16;
+            let curZ = targetSlotZ;
             let curScale = ringRad * taperScale;
             let curDir = armDir3D.clone();
 
@@ -2365,31 +2321,7 @@
             ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curDir);
             ring.rotateOnAxis(new THREE.Vector3(0, 0, 1), timeVal * 6.5 + k * 0.85);
 
-            // Inter-Ring Dragon Lightning Filaments (Connecting adjacent rings)
-            if (k < 4 && !ringsState.summonActive && !ringsState.shieldActive && !arm.strike.active) {
-              const nextRing = tenRings[ringIdx + 1];
-              if (nextRing && Math.random() < 0.45) {
-                hudCtx.save();
-                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 200, 50, 0.75)' : 'rgba(56, 189, 248, 0.75)';
-                hudCtx.lineWidth = 2.5;
-                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ffaa00' : '#00f0ff';
-                hudCtx.shadowBlur = 12;
-                hudCtx.beginPath();
-                hudCtx.moveTo(curX, curY);
-                const midRX = (curX + nextRing.position.x + cxHalf) * 0.5 + (Math.random() - 0.5) * 20;
-                const midRY = (curY + (cyHalf - nextRing.position.y)) * 0.5 + (Math.random() - 0.5) * 20;
-                hudCtx.lineTo(midRX, midRY);
-                hudCtx.lineTo(nextRing.position.x + cxHalf, cyHalf - nextRing.position.y);
-                hudCtx.stroke();
-                hudCtx.restore();
-              }
-            }
           }
-
-          // 2000K Amber Radiant Lighting on Arms and Surroundings
-          const lightCol = (ringsState.mode === 'SHANG_CHI_GOLD') ? '255, 160, 20' : '0, 210, 255';
-          applyPhotometricLight(arm.wrist.x, arm.wrist.y, armLen * 1.45, lightCol, 0.96);
-          applyPhotometricLight((arm.wrist.x + arm.elbow.x)*0.5, (arm.wrist.y + arm.elbow.y)*0.5, armLen * 1.25, lightCol, 0.85);
         });
       }
 
@@ -2950,8 +2882,16 @@
         const dCtx = demoCanvas.getContext('2d');
         dCtx.drawImage(demoImg, 0, 0, 1280, 720);
 
+        trackCanvas.width = 320;
+        trackCanvas.height = 180;
         trackCtx.drawImage(demoCanvas, 0, 0, 320, 180);
-        pose.send({ image: trackCanvas }).catch(e => console.warn(e));
+
+        function feedDemoFrame() {
+          if (!isDemoMode) return;
+          pose.send({ image: trackCanvas }).catch(e => console.warn(e));
+          setTimeout(feedDemoFrame, 80);
+        }
+        feedDemoFrame();
       };
     }
 
@@ -3040,7 +2980,15 @@
       if (!isDemoMode && video.readyState >= 2 && video.videoWidth > 0 && !isProcessingFrame) {
         isProcessingFrame = true;
         try {
-          trackCtx.drawImage(video, 0, 0, 320, 180);
+          const vidW = video.videoWidth || 640;
+          const vidH = video.videoHeight || 480;
+          const targetW = 320;
+          const targetH = Math.round(targetW * (vidH / vidW));
+          if (trackCanvas.width !== targetW || trackCanvas.height !== targetH) {
+            trackCanvas.width = targetW;
+            trackCanvas.height = targetH;
+          }
+          trackCtx.drawImage(video, 0, 0, trackCanvas.width, trackCanvas.height);
 
           // Detect DroidCam Cyan Standby Card every 30 frames
           frameAnalysisCount++;
@@ -3149,8 +3097,90 @@
       }
     });
 
-    // Launch camera on startup
-    startCamera();
+    // Launch camera on startup (or 4K Demo Shot if requested via URL)
+    if (window.location.search.includes('demo')) {
+      enableDemoMode();
+    } else {
+      startCamera();
+    }
+  
+    // -------------------------------------------------------------------------
+    // IMMERSIVE FULLSCREEN & AUTO-HIDE HUD CONTROLS (UNOBSTRUCTED AR CAMERA)
+    // -------------------------------------------------------------------------
+    let hudHideTimer = null;
+    let hudActive = true;
+
+    function resetHudVisibility() {
+      const topHud = document.querySelector('.hud-top');
+      const dockHud = document.querySelector('.hud-dock');
+      if (topHud) topHud.classList.remove('hud-hidden');
+      if (dockHud) dockHud.classList.remove('hud-hidden');
+      hudActive = true;
+
+      clearTimeout(hudHideTimer);
+      hudHideTimer = setTimeout(() => {
+        if (topHud) topHud.classList.add('hud-hidden');
+        if (dockHud) dockHud.classList.add('hud-hidden');
+        hudActive = false;
+      }, 2500);
+    }
+
+    function toggleHudVisibility() {
+      const topHud = document.querySelector('.hud-top');
+      const dockHud = document.querySelector('.hud-dock');
+      if (hudActive) {
+        clearTimeout(hudHideTimer);
+        if (topHud) topHud.classList.add('hud-hidden');
+        if (dockHud) dockHud.classList.add('hud-hidden');
+        hudActive = false;
+      } else {
+        resetHudVisibility();
+      }
+    }
+
+    function toggleBrowserFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn("Fullscreen request failed:", err);
+        });
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // Wake HUD on any user interaction
+    window.addEventListener('mousemove', resetHudVisibility);
+    window.addEventListener('touchstart', resetHudVisibility);
+    window.addEventListener('click', resetHudVisibility);
+
+    // Initial HUD timer starts immediately
+    resetHudVisibility();
+
+    // Hotkeys: [H] for HUD toggle, [F] for Fullscreen
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') {
+        toggleHudVisibility();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleBrowserFullscreen();
+      }
+    });
+
+    const btnFullscreenEl = document.getElementById('btnFullscreen');
+    if (btnFullscreenEl) {
+      btnFullscreenEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleBrowserFullscreen();
+      });
+    }
+
+    const btnToggleHudEl = document.getElementById('btnToggleHud');
+    if (btnToggleHudEl) {
+      btnToggleHudEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleHudVisibility();
+      });
+    }
+
   </script>
 </body>
 </html>
