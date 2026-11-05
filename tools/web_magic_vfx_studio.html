@@ -1854,12 +1854,68 @@
         hudCtx.stroke();
       }
 
+      // REAL-TIME MARTIAL ARTS GESTURE TELEMETRY OVERLAY (Per-Hand State Readouts)
+      const isGold = (ringsState.mode === 'SHANG_CHI_GOLD');
+      const qiColor = isGold ? '#fbbf24' : '#00f0ff';
+      const qiBg = isGold ? 'rgba(245, 158, 11, 0.25)' : 'rgba(0, 240, 255, 0.25)';
+
+      // Left Wrist Gesture Status Reticle
+      if (joints.lw) {
+        const lStatus = ringsState.left.isStriking ? (ringsState.left.isRetracting ? 'RETRACTING' : '⚡ 5 RINGS STRIKE') : 'GUARD (READY)';
+        const lColor = ringsState.left.isStriking ? '#f59e0b' : '#38bdf8';
+        hudCtx.save();
+        hudCtx.strokeStyle = lColor;
+        hudCtx.lineWidth = 1.5;
+        hudCtx.setLineDash([4, 4]);
+        hudCtx.beginPath();
+        hudCtx.arc(joints.lw.x, joints.lw.y, 22, 0, Math.PI * 2);
+        hudCtx.stroke();
+        hudCtx.setLineDash([]);
+        hudCtx.fillStyle = lColor;
+        hudCtx.font = 'bold 10px monospace';
+        hudCtx.fillText(`[L: ${lStatus}]`, joints.lw.x - 35, joints.lw.y - 28);
+        hudCtx.restore();
+      }
+
+      // Right Wrist Gesture Status Reticle
+      if (joints.rw) {
+        const rStatus = ringsState.right.isStriking ? (ringsState.right.isRetracting ? 'RETRACTING' : '⚡ 5 RINGS STRIKE') : 'GUARD (READY)';
+        const rColor = ringsState.right.isStriking ? '#f59e0b' : '#38bdf8';
+        hudCtx.save();
+        hudCtx.strokeStyle = rColor;
+        hudCtx.lineWidth = 1.5;
+        hudCtx.setLineDash([4, 4]);
+        hudCtx.beginPath();
+        hudCtx.arc(joints.rw.x, joints.rw.y, 22, 0, Math.PI * 2);
+        hudCtx.stroke();
+        hudCtx.setLineDash([]);
+        hudCtx.fillStyle = rColor;
+        hudCtx.font = 'bold 10px monospace';
+        hudCtx.fillText(`[R: ${rStatus}]`, joints.rw.x - 35, joints.rw.y - 28);
+        hudCtx.restore();
+      }
+
+      // Mandala Shield Active Banner on Canvas
+      if (ringsState.mandalaShieldActive) {
+        hudCtx.save();
+        hudCtx.fillStyle = 'rgba(10, 14, 26, 0.88)';
+        hudCtx.strokeStyle = qiColor;
+        hudCtx.lineWidth = 2;
+        hudCtx.fillRect(window.innerWidth * 0.5 - 150, 80, 300, 36);
+        hudCtx.strokeRect(window.innerWidth * 0.5 - 150, 80, 300, 36);
+        hudCtx.font = 'bold 12px monospace';
+        hudCtx.fillStyle = qiColor;
+        hudCtx.textAlign = 'center';
+        hudCtx.fillText('🛡️ TAI CHI 10-RING MANDALA SHIELD ACTIVE', window.innerWidth * 0.5, 103);
+        hudCtx.restore();
+      }
+
       // On-Screen Vision HUD Capture Badge
       hudCtx.fillStyle = 'rgba(10, 14, 26, 0.85)';
       hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
       hudCtx.lineWidth = 1;
-      hudCtx.fillRect(20, window.innerHeight - 150, 310, 52);
-      hudCtx.strokeRect(20, window.innerHeight - 150, 310, 52);
+      hudCtx.fillRect(20, window.innerHeight - 150, 320, 52);
+      hudCtx.strokeRect(20, window.innerHeight - 150, 320, 52);
 
       hudCtx.font = 'bold 11px monospace';
       hudCtx.fillStyle = '#00f0ff';
@@ -2264,7 +2320,8 @@
 
           // UPWARD HAND LIFT SUPPRESSION: Raising hand from desk/lap into guard
           // Screen Y goes downward, so upward movement has oldL.y > poseCurrent.lw.y
-          const isUpwardLiftL = (oldL.y - poseCurrent.lw.y > 35) && (forwardDeltaZL < 14) && (reachVelL < 95);
+          // Strictly suppress upward raising if thrust along forearm is low (<60) and not driving toward camera
+          const isUpwardLiftL = (oldL.y - poseCurrent.lw.y > 30) && (thrustVelL < 60) && (forwardDeltaZL < 10);
 
           // Right Arm Motion & Forearm Projection
           const vRx = (poseCurrent.rw.x - oldR.x) / dtR;
@@ -2279,18 +2336,21 @@
 
           const thrustVelR = (vRx * uFxR) + (vRy * uFyR) + (vRz * uFzR);
 
-          const isUpwardLiftR = (oldR.y - poseCurrent.rw.y > 35) && (forwardDeltaZR < 14) && (reachVelR < 95);
+          const isUpwardLiftR = (oldR.y - poseCurrent.rw.y > 30) && (thrustVelR < 60) && (forwardDeltaZR < 10);
 
           // Strike Zones: Hands must be in active chest/torso zone, not hanging down at lap
-          const inStrikeZoneL = (poseCurrent.lw.y < hipsY - 20) && (poseCurrent.lw.y > poseCurrent.ls.y - 140);
-          const inStrikeZoneR = (poseCurrent.rw.y < hipsY - 20) && (poseCurrent.rw.y > poseCurrent.rs.y - 140);
+          const inStrikeZoneL = (poseCurrent.lw.y < hipsY - 15) && (poseCurrent.lw.y > poseCurrent.ls.y - 150);
+          const inStrikeZoneR = (poseCurrent.rw.y < hipsY - 15) && (poseCurrent.rw.y > poseCurrent.rs.y - 150);
 
-          // True Intentional Forward Strikes:
-          // 1) NOT an upward hand lift (zero false triggers when lifting hands)
-          // 2) Arm extended into strike reach (extRatio >= 0.74)
-          // 3) Intentional forward velocity: thrust along forearm > 130 or rapid punch extension
-          const isDrivingOutL = !isUpwardLiftL && (extRatioL >= 0.74) && (thrustVelL > 130 || reachVelL > 130 || (forwardDeltaZL > 16 && reachVelL > 75));
-          const isDrivingOutR = !isUpwardLiftR && (extRatioR >= 0.74) && (thrustVelR > 130 || reachVelR > 130 || (forwardDeltaZR > 16 && reachVelR > 75));
+          // MASTER MARTIAL ARTS STRIKE SENSITIVITY:
+          // 1) Upward guard lift completely filtered out
+          // 2) Fires instantly on intentional punches (either forward forearm thrust > 110, or punch toward camera > 16)
+          // 3) Accommodates both straight and bent-elbow punches (extRatio >= 0.69 or forward camera thrust)
+          const isForwardThrustL = (thrustVelL > 110) || (reachVelL > 110) || (forwardDeltaZL > 14 && (thrustVelL > 55 || reachVelL > 55));
+          const isForwardThrustR = (thrustVelR > 110) || (reachVelR > 110) || (forwardDeltaZR > 14 && (thrustVelR > 55 || reachVelR > 55));
+
+          const isDrivingOutL = !isUpwardLiftL && (extRatioL >= 0.69 || forwardDeltaZL > 18) && isForwardThrustL;
+          const isDrivingOutR = !isUpwardLiftR && (extRatioR >= 0.69 || forwardDeltaZR > 18) && isForwardThrustR;
 
           // 1. TAI CHI 10-RING MANDALA SHIELD (Crossed wrists across chest)
           const chestZone = (poseCurrent.lw.y < torsoMidY + 45) && (poseCurrent.rw.y < torsoMidY + 45) &&
