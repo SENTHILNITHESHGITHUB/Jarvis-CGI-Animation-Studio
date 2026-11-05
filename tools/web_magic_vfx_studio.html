@@ -40,8 +40,7 @@
       object-fit: cover;
       transform: scaleX(-1);
       z-index: 1;
-      filter: contrast(1.18) saturate(1.22) brightness(0.85);
-      transition: filter 0.5s ease;
+      filter: none !important;
     }
 
     #demoCanvas {
@@ -50,17 +49,12 @@
       object-fit: cover;
       transform: scaleX(-1);
       z-index: 1;
-      filter: contrast(1.18) saturate(1.22) brightness(0.85);
+      filter: none !important;
     }
 
     /* Dynamic Photometric Scene Relighting (2000K Amber & 6500K Cyan) */
     #lightCanvas {
-      position: fixed; inset: 0;
-      width: 100vw; height: 100vh;
-      z-index: 2;
-      pointer-events: none;
-      mix-blend-mode: screen;
-      opacity: 0.98;
+      display: none !important;
     }
 
     /* Three.js 3D WebGL Procedural Fluid Shaders */
@@ -96,11 +90,14 @@
       z-index: 10;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
       transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-24px);
     }
-    .hud-top.hud-hidden {
-      opacity: 0 !important;
-      pointer-events: none !important;
-      transform: translateY(-24px) !important;
+    .hud-top.hud-visible {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateY(0) !important;
     }
 
     .brand { display: flex; align-items: center; gap: 14px; }
@@ -150,7 +147,7 @@
     /* Bottom Stance Dock */
     .hud-dock {
       position: fixed; bottom: 20px; left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, 24px);
       background: var(--glass);
       backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.18);
@@ -163,11 +160,13 @@
       scrollbar-width: none;
       -ms-overflow-style: none;
       transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      pointer-events: none;
     }
-    .hud-dock.hud-hidden {
-      opacity: 0 !important;
-      pointer-events: none !important;
-      transform: translate(-50%, 24px) !important;
+    .hud-dock.hud-visible {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translate(-50%, 0) !important;
     }
     .hud-dock::-webkit-scrollbar {
       display: none;
@@ -198,6 +197,12 @@
   </style>
 </head>
 <body>
+
+  <!-- Floating Fullscreen Action Pill -->
+  <button id="floatingFsPill" style="position:fixed; top:20px; right:24px; z-index:99999; background:rgba(15, 23, 42, 0.85); border:1.5px solid rgba(0, 240, 255, 0.7); color:#fff; padding:10px 22px; border-radius:30px; font-size:13px; font-weight:800; cursor:pointer; backdrop-filter:blur(20px); box-shadow:0 10px 30px rgba(0, 240, 255, 0.35); display:flex; align-items:center; gap:8px; letter-spacing:0.8px; transition:all 0.3s ease;">
+    <span>⛶</span> <span id="floatingFsText">CLICK FOR FULL SCREEN</span>
+  </button>
+
   <!-- Dynamic Heat Shimmer SVG Displacement Filter -->
   <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" version="1.1">
     <defs>
@@ -1162,6 +1167,7 @@
       depthWrite: false
     });
     const emberSystem = new THREE.Points(emberGeom, emberMat);
+    emberSystem.visible = false;
     scene.add(emberSystem);
 
     // -------------------------------------------------------------------------
@@ -1558,43 +1564,9 @@
       return;
     }
 
-    // Leaping Golden Plasma Arc between wrists when palms are brought close
+    // Disabled per user request (Eliminates orange Fusion Orb between hands)
     function drawPlasmaArc(p1, p2) {
-      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-      if (dist > 450) return;
-
-      const segments = 12;
-      hudCtx.save();
-      hudCtx.strokeStyle = '#fff5b0';
-      hudCtx.lineWidth = 4.5;
-      hudCtx.shadowColor = '#ff6600';
-      hudCtx.shadowBlur = 24;
-
-      hudCtx.beginPath();
-      hudCtx.moveTo(p1.x, p1.y);
-      for (let i = 1; i < segments; i++) {
-        const frac = i / segments;
-        const mx = p1.x + (p2.x - p1.x) * frac;
-        const my = p1.y + (p2.y - p1.y) * frac;
-        const jitter = (Math.random() - 0.5) * Math.min(60, dist * 0.25);
-        hudCtx.lineTo(mx + jitter, my + jitter);
-      }
-      hudCtx.lineTo(p2.x, p2.y);
-      hudCtx.stroke();
-
-      // Fusion Orb at center when hands are very close (< 180px)
-      if (dist < 220) {
-        const cx = (p1.x + p2.x) * 0.5;
-        const cy = (p1.y + p2.y) * 0.5;
-        const orbRad = Math.max(25, (220 - dist) * 0.65);
-        hudCtx.fillStyle = '#ffffff';
-        hudCtx.shadowColor = '#f59e0b';
-        hudCtx.shadowBlur = 40;
-        hudCtx.beginPath();
-        hudCtx.arc(cx, cy, orbRad, 0, Math.PI * 2);
-        hudCtx.fill();
-      }
-      hudCtx.restore();
+      return;
     }
 
     // Draw Smooth Kinematic Motion Ribbon Trail
@@ -1871,11 +1843,11 @@
 
       // Motion ribbons and shockwaves removed per user request for pure, clean video
 
-      // Render MoCap Skeletal Rig Overlay
-      drawMoCapSkeleton(poseCurrent);
-
-      // Render 3D Holographic Orientation Gyroscope
-      drawHolographicCompass(bodyOrientation.yawDeg, bodyOrientation.pitchDeg, bodyOrientation.rollDeg, bodyOrientation.turnDirection);
+      // MoCap skeleton and orientation compass only rendered when explicitly toggled ON via HUD (Clean pure AR by default)
+      if (showSkeleton && hudVisible) {
+        drawMoCapSkeleton(poseCurrent);
+        drawHolographicCompass(bodyOrientation.yawDeg, bodyOrientation.pitchDeg, bodyOrientation.rollDeg, bodyOrientation.turnDirection);
+      }
 
       // Render 3D Watertight Solid Mesh MoCap Warrior (Always Active, 100% Tracking Every Movement)
       if (showMeshMoCap && warriorGroup) {
@@ -1982,7 +1954,7 @@
         warriorGroup.visible = false;
       }
 
-      // Hide all 3D meshes by default
+      // Permanently hide all orange balls, fire plumes, solar chakra, and embers
       fireMeshL.visible = false;
       fireMeshR.visible = false;
       armStreamMeshL.visible = false;
@@ -1990,9 +1962,10 @@
       upperArmMeshL.visible = false;
       upperArmMeshR.visible = false;
       solarChakraMesh.visible = false;
-      ringGroup.visible = false;
+      emberSystem.visible = false;
       strangeGroupL.visible = false;
       strangeGroupR.visible = false;
+      ringGroup.visible = true; // Always show Ten Rings!
 
       if (manualOverride) activeStance = manualOverride;
       hudStance.innerText = activeStance.replace(/_/g, ' ');
@@ -2001,98 +1974,7 @@
       // cxHalf and cyHalf declared at top of renderLoop
       const isOverdrive = activeStance === "OMNI_OVERDRIVE";
 
-      // -----------------------------------------------------------------------
-      // A. BRAHMĀSTRA (AGNYĀSTRA) PROCEDURAL GLSL FLUID COMBUSTION
-      // -----------------------------------------------------------------------
-      if (activeStance.includes("BRAHMASTRA") || isOverdrive) {
-        fireMeshL.visible = true;
-        fireMeshR.visible = true;
-        armStreamMeshL.visible = true;
-        armStreamMeshR.visible = true;
-        upperArmMeshL.visible = true;
-        upperArmMeshR.visible = true;
-        solarChakraMesh.visible = true;
-
-        // Update Shader Uniforms
-        flameMatL.uniforms.uTime.value = timeVal;
-        flameMatR.uniforms.uTime.value = timeVal + 1.2;
-        flameMatCrossL.uniforms.uTime.value = timeVal * 1.1;
-        flameMatCrossR.uniforms.uTime.value = timeVal * 1.1 + 1.5;
-        armStreamMatL.uniforms.uTime.value = timeVal * 0.9;
-        armStreamMatR.uniforms.uTime.value = timeVal * 0.9 + 1.0;
-        upperArmMatL.uniforms.uTime.value = timeVal * 0.8;
-        upperArmMatR.uniforms.uTime.value = timeVal * 0.8 + 1.0;
-        chakraMat.uniforms.uTime.value = timeVal;
-
-        const armLenL = Math.hypot(poseCurrent.lw.x - poseCurrent.le.x, poseCurrent.lw.y - poseCurrent.le.y) || 190;
-        const armLenR = Math.hypot(poseCurrent.rw.x - poseCurrent.re.x, poseCurrent.rw.y - poseCurrent.re.y) || 190;
-        const sWidth = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 230;
-
-        const flameHeightL = Math.max(300, armLenL * 2.8);
-        const flameWidthL = flameHeightL * 0.65;
-        const flameHeightR = Math.max(300, armLenR * 2.8);
-        const flameWidthR = flameHeightR * 0.65;
-
-        const rotL = getBoneAngle(poseCurrent.le, poseCurrent.lw);
-        const rotR = getBoneAngle(poseCurrent.re, poseCurrent.rw);
-        const rotUpperL = getBoneAngle(poseCurrent.ls, poseCurrent.le);
-        const rotUpperR = getBoneAngle(poseCurrent.rs, poseCurrent.re);
-
-        // 1. Primary Hand Fluid Plumes
-        fireMeshL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 10);
-        fireMeshL.scale.set(flameWidthL, flameHeightL, 1);
-        fireMeshL.rotation.z = rotL;
-
-        fireMeshR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 10);
-        fireMeshR.scale.set(flameWidthR, flameHeightR, 1);
-        fireMeshR.rotation.z = rotR;
-
-        // 2. Forearm Bone Fire Mantles (Elbow to Wrist)
-        const midArmLx = (poseCurrent.le.x + poseCurrent.lw.x) * 0.5;
-        const midArmLy = (poseCurrent.le.y + poseCurrent.lw.y) * 0.5;
-        armStreamMeshL.position.set(midArmLx - cxHalf, cyHalf - midArmLy, 8);
-        armStreamMeshL.scale.set(flameWidthL * 0.78, flameHeightL * 0.72, 1);
-        armStreamMeshL.rotation.z = rotL;
-
-        const midArmRx = (poseCurrent.re.x + poseCurrent.rw.x) * 0.5;
-        const midArmRy = (poseCurrent.re.y + poseCurrent.rw.y) * 0.5;
-        armStreamMeshR.position.set(midArmRx - cxHalf, cyHalf - midArmRy, 8);
-        armStreamMeshR.scale.set(flameWidthR * 0.78, flameHeightR * 0.72, 1);
-        armStreamMeshR.rotation.z = rotR;
-
-        // 3. Upper Arm Bone Fire Sheaths (Shoulder to Elbow)
-        const midUpLx = (poseCurrent.ls.x + poseCurrent.le.x) * 0.5;
-        const midUpLy = (poseCurrent.ls.y + poseCurrent.le.y) * 0.5;
-        upperArmMeshL.position.set(midUpLx - cxHalf, cyHalf - midUpLy, 7);
-        upperArmMeshL.scale.set(flameWidthL * 0.65, flameHeightL * 0.60, 1);
-        upperArmMeshL.rotation.z = rotUpperL;
-
-        const midUpRx = (poseCurrent.rs.x + poseCurrent.re.x) * 0.5;
-        const midUpRy = (poseCurrent.rs.y + poseCurrent.re.y) * 0.5;
-        upperArmMeshR.position.set(midUpRx - cxHalf, cyHalf - midUpRy, 7);
-        upperArmMeshR.scale.set(flameWidthR * 0.65, flameHeightR * 0.60, 1);
-        upperArmMeshR.rotation.z = rotUpperR;
-
-        // 4. Astral Solar Chakra (Anchored to Sternum / Spine Core)
-        const chakraRad = Math.max(380, sWidth * 2.5);
-        solarChakraMesh.position.set(poseCurrent.spine.x - cxHalf, cyHalf - poseCurrent.spine.y, -40);
-        solarChakraMesh.scale.set(chakraRad, chakraRad, 1);
-        solarChakraMesh.rotation.z += 0.015;
-
-        // 5. Agnyāstra Crackling Plasma Arc between hands
-        drawPlasmaArc(poseCurrent.lw, poseCurrent.rw);
-
-        // 3D Point Lights
-        pointLightL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 80);
-        pointLightR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 80);
-        pointLightL.color.setHex(0xff5500);
-        pointLightR.color.setHex(0xff5500);
-
-        // Deep 2000K Photometric Amber Room & Skin Relighting
-        applyPhotometricLight(poseCurrent.lw.x, poseCurrent.lw.y, flameHeightL * 1.15, '255, 95, 10', 0.98);
-        applyPhotometricLight(poseCurrent.rw.x, poseCurrent.rw.y, flameHeightR * 1.15, '255, 95, 10', 0.98);
-        applyPhotometricLight(poseCurrent.spine.x, poseCurrent.spine.y, sWidth * 1.7, '240, 75, 5', 0.88);
-      }
+      // Brahmastra fire meshes permanently disabled (Zero orange balls)
 
       // -----------------------------------------------------------------------
       // B. SHANG-CHI (PHOTOREALISTIC TEN RINGS MOVIE GESTURES & ENTRY SYSTEM)
@@ -2133,42 +2015,70 @@
           if (ringsState.strikeR.progress >= 1.0) ringsState.strikeR.active = false;
         }
 
-        // Gesture Detection: Kung Fu Punch Strike (Forward thrust with fist)
-        const punchSpeedL = speedL;
-        const punchSpeedR = speedR;
-        if (punchSpeedL > 580 && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive) {
+        // Gesture Detection 1: 3D Kinetic Punch Strike (Forward thrust with fist)
+        const reachL = Math.hypot(poseCurrent.lw.x - poseCurrent.ls.x, poseCurrent.lw.y - poseCurrent.ls.y);
+        const reachVelL = (reachL - (ringsState._prevReachL || reachL)) * 30;
+        ringsState._prevReachL = reachL;
+        const dzL = ((poseCurrent.lw.z || 0) - (ringsState._prevLwZ || (poseCurrent.lw.z || 0))) * 600;
+        ringsState._prevLwZ = poseCurrent.lw.z || 0;
+        const punchVel3DL = Math.hypot(speedL, dzL);
+
+        if ((reachVelL > 260 || punchVel3DL > 420) && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive) {
           ringsState.strikeL.active = true;
           ringsState.strikeL.progress = 0.0;
           const pdx = poseCurrent.lw.x - poseCurrent.le.x;
           const pdy = poseCurrent.le.y - poseCurrent.lw.y;
-          const pdz = (poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0);
+          const pdz = ((poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0)) + 0.35;
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
-          ringsState.strikeL.dir.set(pdx / plen, pdy / plen, (pdz / plen) + 0.35).normalize();
+          ringsState.strikeL.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
         }
-        if (punchSpeedR > 580 && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
+
+        const reachR = Math.hypot(poseCurrent.rw.x - poseCurrent.rs.x, poseCurrent.rw.y - poseCurrent.rs.y);
+        const reachVelR = (reachR - (ringsState._prevReachR || reachR)) * 30;
+        ringsState._prevReachR = reachR;
+        const dzR = ((poseCurrent.rw.z || 0) - (ringsState._prevRwZ || (poseCurrent.rw.z || 0))) * 600;
+        ringsState._prevRwZ = poseCurrent.rw.z || 0;
+        const punchVel3DR = Math.hypot(speedR, dzR);
+
+        if ((reachVelR > 260 || punchVel3DR > 420) && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
           ringsState.strikeR.active = true;
           ringsState.strikeR.progress = 0.0;
           const pdx = poseCurrent.rw.x - poseCurrent.re.x;
           const pdy = poseCurrent.re.y - poseCurrent.rw.y;
-          const pdz = (poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0);
+          const pdz = ((poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0)) + 0.35;
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
-          ringsState.strikeR.dir.set(pdx / plen, pdy / plen, (pdz / plen) + 0.35).normalize();
+          ringsState.strikeR.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
         }
 
-        // Gesture Detection: Tai Chi Dragon Mandala Shield (Crossed Wrists)
+        // Gesture Detection 2: Tai Chi Dragon Mandala Shield (Crossed Wrists across chest)
         const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
         const wristsRaised = (poseCurrent.lw.y < poseCurrent.lh.y - 20) && (poseCurrent.rw.y < poseCurrent.rh.y - 20);
         const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x); // Left wrist crossed over right
-        ringsState.shieldActive = ((wristDist < 125 || (wristsCrossed && wristDist < 210)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive);
+        ringsState.shieldActive = ((wristDist < 130 || (wristsCrossed && wristDist < 220)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive);
 
-        // Gesture Detection: Qi Color Shift (Clapping / Touching Palms Together)
-        if (wristDist < 75 && !ringsState._clapCooldown) {
+        // Gesture Detection 3: Qi Color Shift (Clapping / Touching Palms Together)
+        if (wristDist < 80 && !ringsState._clapCooldown) {
           ringsState._clapCooldown = true;
           ringsState.toggleMode();
           playRingClangSFX(1.8);
           setTimeout(() => { ringsState._clapCooldown = false; }, 1200);
+        }
+
+        // Gesture Detection 4: Open Palms Forward / Summon Stance (Cinematic Wear of Rings)
+        if (!ringsState._summonCooldown) ringsState._summonCooldown = 0;
+        if (ringsState._summonCooldown > 0) ringsState._summonCooldown--;
+
+        const wristsApart = wristDist > 220 && wristDist < 680;
+        const palmsForward = (poseCurrent.lindex && poseCurrent.rindex) ?
+          (poseCurrent.lindex.y < poseCurrent.lw.y + 20 && poseCurrent.rindex.y < poseCurrent.rw.y + 20) : true;
+        const armsExtended = (reachL > shoulderW * 0.65 && reachR > shoulderW * 0.65);
+
+        if (wristsApart && wristsRaised && palmsForward && armsExtended && !ringsState.summonActive && ringsState._summonCooldown === 0) {
+          ringsState._summonCooldown = 180; // ~3 second debounce
+          ringsState.triggerSummon();
+          playRingClangSFX(1.1);
         }
 
         // Measure Shoulder Width for Depth-Invariant Scale
@@ -2229,8 +2139,8 @@
           // Punch Direction Vector (Fist forward thrust)
           const punchDir = arm.strike.active ? arm.strike.dir : handDir3D;
 
-          // Movie-Authentic Prop Ring Radius (Bold, substantial Hung Gar iron ring scale)
-          const baseRingRad = Math.max(42, refArmLen * 0.22);
+          // Movie-Authentic Prop Ring Radius (Exact anatomical fit to forearm thickness)
+          const baseRingRad = Math.max(28, refArmLen * 0.175);
 
           // 5 Rings per Arm
           for (let k = 0; k < 5; k++) {
@@ -2241,15 +2151,15 @@
             // -----------------------------------------------------------------
             // MOVIE-ACCURATE LOWER FOREARM RESTING SLOTS
             // In the movie, the 5 rings stack tightly right above the wrist joint!
-            // Ring 4 = closest to wrist (0.88), Ring 0 = highest on lower forearm (0.60)
+            // Ring 4 = closest to wrist (0.86), Ring 0 = highest on lower forearm (0.60)
             // -----------------------------------------------------------------
-            const slotFrac = 0.60 + k * 0.07;
+            const slotFrac = 0.60 + k * 0.065;
             const targetSlotX = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * slotFrac;
             const targetSlotY = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * slotFrac;
             const targetSlotZ = (arm.elbow.z || 0) + ((arm.wrist.z || 0) - (arm.elbow.z || 0)) * slotFrac + 15;
 
-            // Anatomical muscular taper: 1.05x higher on forearm, 0.95x at wrist bone
-            const taperScale = 1.05 - k * 0.025;
+            // Anatomical muscular taper: 1.04x higher on forearm, 0.96x at wrist bone
+            const taperScale = 1.04 - k * 0.02;
 
             // Subtle harmonic living Qi breathing
             const qiBreath = Math.sin(timeVal * 2.5 + k * 0.4) * 0.02;
@@ -2414,19 +2324,20 @@
               smooth.quat.copy(targetQuat);
               smooth.initialized = true;
             } else {
-              // Adaptive smoothing: heavy damping when still (rock solid), snappy when fast!
+              // Adaptive smoothing: rock solid when stationary, instant snappy 1:1 lock when moving!
               const dX = threeTargetX - ring.position.x;
               const dY = threeTargetY - ring.position.y;
               const dZ = threeTargetZ - ring.position.z;
               const moveDist = Math.hypot(dX, dY, dZ);
-              const alphaPos = moveDist > 25 ? 0.88 : (moveDist > 8 ? 0.65 : 0.38);
+              const alphaPos = moveDist > 16 ? 0.94 : (moveDist > 6 ? 0.72 : 0.42);
+              const alphaQuat = moveDist > 16 ? 0.90 : (moveDist > 6 ? 0.68 : 0.38);
 
               ring.position.x += dX * alphaPos;
               ring.position.y += dY * alphaPos;
               ring.position.z += dZ * alphaPos;
 
-              ring.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.45);
-              ring.quaternion.slerp(targetQuat, 0.40);
+              ring.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.55);
+              ring.quaternion.slerp(targetQuat, alphaQuat);
             }
 
           }
@@ -2874,14 +2785,7 @@
       });
     });
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === ' ') setVFXMode('AUTO');
-      else if (e.key === '1') setVFXMode('IRON_MAN');
-      else if (e.key === '2') setVFXMode('BRAHMASTRA');
-      else if (e.key === '3') setVFXMode('SHANG_CHI');
-      else if (e.key === '4') setVFXMode('DOCTOR_STRANGE');
-      else if (e.key === '5') setVFXMode('OMNI_OVERDRIVE');
-    });
+    // Primary hotkeys handled at bottom of script (Space = Kung Fu Punch Strike, S = Wear Rings, D = Shield, Q = Qi Toggle, F = Fullscreen, H = HUD)
 
     // -------------------------------------------------------------------------
     // 13. ULTRA-FAST 60 FPS MOCAP SENSING PIPELINE (320x180 OFFSCREEN BUFFER)
@@ -2932,20 +2836,9 @@
       autoCalib.feed(mocapJoints, lms);
       bodyOrientation.compute(mocapJoints, lms);
 
-      // Auto AI Gesture Stance Recognition
+      // Auto AI Gesture Stance Recognition (Shang-Chi Ten Rings Locked)
       if (!manualOverride) {
-        const distWrists = Math.hypot(mocapJoints.lw.x - mocapJoints.rw.x, mocapJoints.lw.y - mocapJoints.rw.y);
-        const handsAboveNose = (mocapJoints.lw.y < mocapJoints.nose.y) && (mocapJoints.rw.y < mocapJoints.nose.y);
-
-        if (distWrists < 140) {
-          activeStance = "BRAHMASTRA";
-        } else if (handsAboveNose) {
-          activeStance = "DOCTOR_STRANGE";
-        } else if (Math.abs(mocapJoints.lw.y - mocapJoints.le.y) < 60 && Math.abs(mocapJoints.rw.y - mocapJoints.re.y) < 60) {
-          activeStance = "SHANG_CHI";
-        } else {
-          activeStance = "BRAHMASTRA";
-        }
+        activeStance = "SHANG_CHI";
       }
     });
 
@@ -2976,7 +2869,7 @@
         demoCanvas.style.objectFit = 'cover';
         demoCanvas.style.transform = 'scaleX(-1)';
         demoCanvas.style.zIndex = '1';
-        demoCanvas.style.filter = 'contrast(1.18) saturate(1.22) brightness(0.85)';
+        demoCanvas.style.filter = 'none';
         document.body.prepend(demoCanvas);
       }
       demoCanvas.style.display = 'block';
@@ -3213,62 +3106,83 @@
     }
   
     // -------------------------------------------------------------------------
-    // IMMERSIVE FULLSCREEN & AUTO-HIDE HUD CONTROLS (UNOBSTRUCTED AR CAMERA)
+    // 100% PURE CINEMA FULLSCREEN & INSTANT FULLSCREEN CLICK HANDLER
     // -------------------------------------------------------------------------
-    let hudHideTimer = null;
-    let hudActive = true;
-
-    function resetHudVisibility() {
-      const topHud = document.querySelector('.hud-top');
-      const dockHud = document.querySelector('.hud-dock');
-      if (topHud) topHud.classList.remove('hud-hidden');
-      if (dockHud) dockHud.classList.remove('hud-hidden');
-      hudActive = true;
-
-      clearTimeout(hudHideTimer);
-      hudHideTimer = setTimeout(() => {
-        if (topHud) topHud.classList.add('hud-hidden');
-        if (dockHud) dockHud.classList.add('hud-hidden');
-        hudActive = false;
-      }, 2500);
-    }
-
-    function toggleHudVisibility() {
-      const topHud = document.querySelector('.hud-top');
-      const dockHud = document.querySelector('.hud-dock');
-      if (hudActive) {
-        clearTimeout(hudHideTimer);
-        if (topHud) topHud.classList.add('hud-hidden');
-        if (dockHud) dockHud.classList.add('hud-hidden');
-        hudActive = false;
-      } else {
-        resetHudVisibility();
-      }
-    }
+    let hudVisible = false;
+    const topHud = document.querySelector('.hud-top');
+    const dockHud = document.querySelector('.hud-dock');
+    const fsPill = document.getElementById('floatingFsPill');
+    const fsText = document.getElementById('floatingFsText');
 
     function toggleBrowserFullscreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
-          console.warn("Fullscreen request failed:", err);
+          console.warn("Fullscreen request:", err);
         });
       } else {
         if (document.exitFullscreen) document.exitFullscreen();
       }
     }
 
-    // Wake HUD on any user interaction
-    window.addEventListener('mousemove', resetHudVisibility);
-    window.addEventListener('touchstart', resetHudVisibility);
-    window.addEventListener('click', resetHudVisibility);
+    function updateFsPillUI() {
+      if (document.fullscreenElement) {
+        if (fsText) fsText.innerText = "FULL SCREEN ACTIVE [F]";
+        if (fsPill) {
+          fsPill.style.opacity = "0.35";
+          fsPill.style.borderColor = "rgba(16, 185, 129, 0.5)";
+        }
+      } else {
+        if (fsText) fsText.innerText = "CLICK FOR FULL SCREEN";
+        if (fsPill) {
+          fsPill.style.opacity = "1.0";
+          fsPill.style.borderColor = "rgba(0, 240, 255, 0.7)";
+        }
+      }
+    }
 
-    // Initial HUD timer starts immediately
-    resetHudVisibility();
+    document.addEventListener('fullscreenchange', updateFsPillUI);
 
-    // Hotkeys: [SPACE] for Strike, [S] for Summon/Wear, [D] for Shield, [Q] for Qi toggle, [H] for HUD, [F] for Fullscreen
+    if (fsPill) {
+      fsPill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleBrowserFullscreen();
+      });
+      fsPill.addEventListener('mouseenter', () => {
+        if (fsPill) fsPill.style.opacity = "1.0";
+      });
+      fsPill.addEventListener('mouseleave', () => {
+        if (document.fullscreenElement && fsPill) fsPill.style.opacity = "0.35";
+      });
+    }
+
+    // Single click anywhere on video enters fullscreen!
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('button, .badge, #propInspectModal, .dock-pill')) return;
+      if (!document.fullscreenElement) {
+        toggleBrowserFullscreen();
+      }
+    });
+
+    function toggleHud() {
+      hudVisible = !hudVisible;
+      if (topHud) topHud.classList.toggle('hud-visible', hudVisible);
+      if (dockHud) dockHud.classList.toggle('hud-visible', hudVisible);
+    }
+
+    // Hotkeys:
+    // [F]: Fullscreen
+    // [H]: Toggle HUD Controls
+    // [SPACE]: Kung Fu Punch Strike
+    // [S]: Wear / Summon Rings over hands
+    // [D]: Dragon Mandala Shield
+    // [Q]: Toggle Qi color (Gold / Blue)
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleBrowserFullscreen();
+      } else if (e.key === 'h' || e.key === 'H') {
+        toggleHud();
+      } else if (e.code === 'Space') {
         e.preventDefault();
-        // Trigger punch strike on left or right arm
         if (!ringsState.strikeL.active && !ringsState.strikeR.active) {
           ringsState.strikeR.active = true;
           ringsState.strikeR.progress = 0.0;
@@ -3277,19 +3191,10 @@
         }
       } else if (e.key === 's' || e.key === 'S') {
         ringsState.triggerSummon();
-      } else if (e.key === 'q' || e.key === 'Q') {
-        ringsState.toggleMode();
       } else if (e.key === 'd' || e.key === 'D') {
         ringsState.shieldActive = !ringsState.shieldActive;
-      }
-    });
-
-    // Hotkeys: [H] for HUD toggle, [F] for Fullscreen
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'h' || e.key === 'H') {
-        toggleHudVisibility();
-      } else if (e.key === 'f' || e.key === 'F') {
-        toggleBrowserFullscreen();
+      } else if (e.key === 'q' || e.key === 'Q') {
+        ringsState.toggleMode();
       }
     });
 
@@ -3305,7 +3210,7 @@
     if (btnToggleHudEl) {
       btnToggleHudEl.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleHudVisibility();
+        toggleHud();
       });
     }
 
