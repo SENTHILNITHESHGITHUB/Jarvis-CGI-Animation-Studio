@@ -859,28 +859,28 @@
 
     const { colorTex: shangChiColorMap, normalTex: shangChiNormalMap, emissiveTex: shangChiEmissiveMap } = generateShangChiRuneMaps();
 
-    // 1. Heavy Forged Antique Copper Bronze PBR Material (Environment-Reflective)
+    // 1. Heavy Forged Antique Copper Bronze PBR Material (Matched to Movie Prop Photo)
     const matAntiqueCopper = new THREE.MeshStandardMaterial({
-      color: 0x9e4b2c,
-      metalness: 0.96,
-      roughness: 0.18,
-      clearcoat: 0.60,
-      clearcoatRoughness: 0.12,
-      envMapIntensity: 1.8
+      color: 0xba6a44, // Warm authentic antique brushed rose-copper
+      metalness: 0.94,
+      roughness: 0.22,
+      clearcoat: 0.50,
+      clearcoatRoughness: 0.14,
+      envMapIntensity: 2.2
     });
 
-    // 2. Chiseled Silver Damascus Rune Inlay Material (Relief Normal + Molten Emissive)
+    // 2. Chiseled Silver Damascus Rune Inlay Material (Balanced Emissive so Silver Detail is Crisp)
     const matRuneInlay = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       map: shangChiColorMap,
       normalMap: shangChiNormalMap,
-      normalScale: new THREE.Vector2(2.4, 2.4),
-      metalness: 0.90,
-      roughness: 0.26,
-      emissive: 0xff5500,
+      normalScale: new THREE.Vector2(3.2, 3.2), // Deep chiseled relief
+      metalness: 0.92,
+      roughness: 0.24,
+      emissive: 0xff7700,
       emissiveMap: shangChiEmissiveMap,
-      emissiveIntensity: 2.6,
-      envMapIntensity: 1.5
+      emissiveIntensity: 0.85, // Crisp silver Damascus details, not washed-out solid neon
+      envMapIntensity: 1.8
     });
 
     // 3. Internal Molten Core Plasma Tube Material
@@ -984,6 +984,15 @@
     // -------------------------------------------------------------------------
     // SHANG-CHI MOVIE GESTURES & KINEMATICS ENGINE
     // -------------------------------------------------------------------------
+
+    // Smooth kinematic filter and orientation buffers for 10 Ten Rings
+    const ringSmoothData = Array.from({ length: 10 }, () => ({
+      pos: new THREE.Vector3(),
+      scale: 1.0,
+      quat: new THREE.Quaternion(),
+      initialized: false
+    }));
+
     const ringsState = {
       mode: "SHANG_CHI_GOLD", // "SHANG_CHI_GOLD" (Ta Lo Fire) or "WENWU_CYAN" (Cosmic Lightning)
       summonActive: false,    // Default false: rings immediately locked onto forearms
@@ -1016,12 +1025,14 @@
         if (this.mode === "SHANG_CHI_GOLD") {
           matRuneInlay.emissive.setHex(0xff7700);
           matRingPlasmaCore.color.setHex(0xffe6a0);
-          matAntiqueCopper.color.setHex(0x9c4f2b);
+          matAntiqueCopper.color.setHex(0xba6a44);
+          matRuneInlay.emissiveIntensity = 0.85;
           if (btn) btn.innerText = "🎨 QI: TA LO GOLD";
         } else {
           matRuneInlay.emissive.setHex(0x00d4ff);
           matRingPlasmaCore.color.setHex(0x80f0ff);
-          matAntiqueCopper.color.setHex(0x3a506b);
+          matAntiqueCopper.color.setHex(0x4a6582);
+          matRuneInlay.emissiveIntensity = 1.05;
           if (btn) btn.innerText = "🎨 QI: WENWU BLUE";
         }
       }
@@ -2089,9 +2100,18 @@
       if (activeStance.includes("SHANG_CHI") || isOverdrive) {
         ringGroup.visible = true;
 
-        // Progress Summon Sequence (Rings flying in & sliding over hands)
+        // Dynamic 3D Point Lights at Wrists for Real-World Metallic Specular Glints
+        pointLightL.position.set(poseCurrent.lw.x - cxHalf, cyHalf - poseCurrent.lw.y, 70);
+        pointLightR.position.set(poseCurrent.rw.x - cxHalf, cyHalf - poseCurrent.rw.y, 70);
+        pointLightL.intensity = 3.6;
+        pointLightR.intensity = 3.6;
+        const qiLightHex = (ringsState.mode === 'SHANG_CHI_GOLD') ? 0xffaa20 : 0x00d4ff;
+        pointLightL.color.setHex(qiLightHex);
+        pointLightR.color.setHex(qiLightHex);
+
+        // Progress Summon Sequence (Rings flying in & sliding over hands onto forearms)
         if (ringsState.summonActive) {
-          ringsState.summonProgress += 0.0085;
+          ringsState.summonProgress += 0.009; // ~1.8 seconds full cinematic sequence
           if (ringsState.summonProgress >= 1.0) {
             ringsState.summonActive = false;
             ringsState.isLocked = true;
@@ -2103,50 +2123,62 @@
           }
         }
 
-        // Fast Punch Strike Detection (Triggers ring missile launch)
-        if (speedL > 550 && !ringsState.strikeL.active && ringsState.isLocked) {
-          ringsState.strikeL.active = true;
-          ringsState.strikeL.progress = 0.0;
-          const dx = poseCurrent.lw.x - poseCurrent.le.x;
-          const dy = poseCurrent.le.y - poseCurrent.lw.y;
-          const len = Math.hypot(dx, dy) || 1;
-          ringsState.strikeL.dir.set(dx / len, dy / len, 0);
-          triggerShockwave(poseCurrent.lw.x, poseCurrent.lw.y, 350, ringsState.mode === 'SHANG_CHI_GOLD' ? '255, 140, 20' : '0, 200, 255');
-          playRingClangSFX(1.4);
-        }
-        if (speedR > 550 && !ringsState.strikeR.active && ringsState.isLocked) {
-          ringsState.strikeR.active = true;
-          ringsState.strikeR.progress = 0.0;
-          const dx = poseCurrent.rw.x - poseCurrent.re.x;
-          const dy = poseCurrent.re.y - poseCurrent.rw.y;
-          const len = Math.hypot(dx, dy) || 1;
-          ringsState.strikeR.dir.set(dx / len, dy / len, 0);
-          triggerShockwave(poseCurrent.rw.x, poseCurrent.rw.y, 350, ringsState.mode === 'SHANG_CHI_GOLD' ? '255, 140, 20' : '0, 200, 255');
-          playRingClangSFX(1.4);
-        }
-
-        // Advance Strike Projectiles
+        // Advance Strike Projectiles (Smooth Outward Punch & Inward Whip Return)
         if (ringsState.strikeL.active) {
-          ringsState.strikeL.progress += 0.045;
+          ringsState.strikeL.progress += 0.038;
           if (ringsState.strikeL.progress >= 1.0) ringsState.strikeL.active = false;
         }
         if (ringsState.strikeR.active) {
-          ringsState.strikeR.progress += 0.045;
+          ringsState.strikeR.progress += 0.038;
           if (ringsState.strikeR.progress >= 1.0) ringsState.strikeR.active = false;
         }
 
-        // Check Crossed Wrists (Dragon Qi Mandala Shield Gesture)
-        // Deliberate gesture: hands crossed or wrists touching at chest/shoulder level
+        // Gesture Detection: Kung Fu Punch Strike (Forward thrust with fist)
+        const punchSpeedL = speedL;
+        const punchSpeedR = speedR;
+        if (punchSpeedL > 580 && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive) {
+          ringsState.strikeL.active = true;
+          ringsState.strikeL.progress = 0.0;
+          const pdx = poseCurrent.lw.x - poseCurrent.le.x;
+          const pdy = poseCurrent.le.y - poseCurrent.lw.y;
+          const pdz = (poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0);
+          const plen = Math.hypot(pdx, pdy, pdz) || 1;
+          ringsState.strikeL.dir.set(pdx / plen, pdy / plen, (pdz / plen) + 0.35).normalize();
+          playRingClangSFX(1.4);
+        }
+        if (punchSpeedR > 580 && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
+          ringsState.strikeR.active = true;
+          ringsState.strikeR.progress = 0.0;
+          const pdx = poseCurrent.rw.x - poseCurrent.re.x;
+          const pdy = poseCurrent.re.y - poseCurrent.rw.y;
+          const pdz = (poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0);
+          const plen = Math.hypot(pdx, pdy, pdz) || 1;
+          ringsState.strikeR.dir.set(pdx / plen, pdy / plen, (pdz / plen) + 0.35).normalize();
+          playRingClangSFX(1.4);
+        }
+
+        // Gesture Detection: Tai Chi Dragon Mandala Shield (Crossed Wrists)
         const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
-        const wristsRaised = (poseCurrent.lw.y < poseCurrent.lh.y - 30) && (poseCurrent.rw.y < poseCurrent.rh.y - 30);
-        const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x); // Left wrist crossed over right in mirrored view
-        ringsState.shieldActive = ((wristDist < 110 || (wristsCrossed && wristDist < 200)) && wristsRaised && ringsState.isLocked);
+        const wristsRaised = (poseCurrent.lw.y < poseCurrent.lh.y - 20) && (poseCurrent.rw.y < poseCurrent.rh.y - 20);
+        const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x); // Left wrist crossed over right
+        ringsState.shieldActive = ((wristDist < 125 || (wristsCrossed && wristDist < 210)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive);
+
+        // Gesture Detection: Qi Color Shift (Clapping / Touching Palms Together)
+        if (wristDist < 75 && !ringsState._clapCooldown) {
+          ringsState._clapCooldown = true;
+          ringsState.toggleMode();
+          playRingClangSFX(1.8);
+          setTimeout(() => { ringsState._clapCooldown = false; }, 1200);
+        }
+
+        // Measure Shoulder Width for Depth-Invariant Scale
+        const shoulderW = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 240;
 
         const arms = [
           {
             elbow: poseCurrent.le,
             wrist: poseCurrent.lw,
-            index: poseCurrent.lindex || poseCurrent.lw,
+            index: poseCurrent.lindex || { x: poseCurrent.lw.x - 35, y: poseCurrent.lw.y - 25, z: poseCurrent.lw.z },
             offset: 0,
             strike: ringsState.strikeL,
             sign: -1
@@ -2154,172 +2186,248 @@
           {
             elbow: poseCurrent.re,
             wrist: poseCurrent.rw,
-            index: poseCurrent.rindex || poseCurrent.rw,
+            index: poseCurrent.rindex || { x: poseCurrent.rw.x + 35, y: poseCurrent.rw.y - 25, z: poseCurrent.rw.z },
             offset: 5,
             strike: ringsState.strikeR,
             sign: 1
           }
         ];
 
-        // Midpoint for Dragon Shield
+        // Midpoint for Dragon Mandala Shield
         const shieldMidX = (poseCurrent.lw.x + poseCurrent.rw.x) * 0.5;
         const shieldMidY = (poseCurrent.lw.y + poseCurrent.rw.y) * 0.5;
 
         arms.forEach(arm => {
-          const dx = arm.wrist.x - arm.elbow.x;
-          const dy = arm.elbow.y - arm.wrist.y;
-          const dz = (arm.wrist.z || 0) - (arm.elbow.z || 0);
-          const armLen = Math.hypot(dx, dy) || 1;
-          const boneLen3D = Math.hypot(dx, dy, dz) || 1;
+          // Forearm 3D Geometry
+          const fdx = arm.wrist.x - arm.elbow.x;
+          const fdy = arm.elbow.y - arm.wrist.y; // Invert Y for Three.js Cartesian space
+          const fdz = (arm.wrist.z || 0) - (arm.elbow.z || 0);
+          const armLen2D = Math.hypot(fdx, fdy) || 1;
+          const boneLen3D = Math.hypot(fdx, fdy, fdz) || 1;
 
-          // Authentic 3D Ring Orientation aligned directly with physical forearm bone vector
+          // Reference forearm length (depth invariant so rings never shrink when pointing at camera)
+          const refArmLen = Math.max(armLen2D, shoulderW * 0.85);
+
+          // Forearm Collinear 3D Direction Vector
           const armDir3D = new THREE.Vector3(
-            dx / boneLen3D,
-            dy / boneLen3D,
-            (dz / boneLen3D) + 0.15
+            fdx / boneLen3D,
+            fdy / boneLen3D,
+            (fdz / boneLen3D) + 0.12
           ).normalize();
 
-          // Hand vector for entering fingertips & sliding over palm
+          // Hand 3D Vector (Wrist -> Index Fingertip / Knuckles)
           const hdx = arm.index.x - arm.wrist.x;
           const hdy = arm.wrist.y - arm.index.y;
-          const handLen = Math.hypot(hdx, hdy) || 40;
+          const hdz = (arm.index.z || 0) - (arm.wrist.z || 0);
+          const handLen = Math.hypot(hdx, hdy, hdz) || 50;
           const handDir3D = new THREE.Vector3(
-            (hdx / handLen) * 0.75,
-            (hdy / handLen) * 0.75,
-            0.65
+            hdx / handLen,
+            hdy / handLen,
+            (hdz / handLen) + 0.15
           ).normalize();
 
-          // Movie-Accurate Anatomical Forearm Ring Sizing (Snug, realistic fit on human arms)
-          const ringRad = Math.max(34, armLen * 0.19);
+          // Punch Direction Vector (Fist forward thrust)
+          const punchDir = arm.strike.active ? arm.strike.dir : handDir3D;
 
+          // Movie-Authentic Prop Ring Radius (Bold, substantial Hung Gar iron ring scale)
+          const baseRingRad = Math.max(42, refArmLen * 0.22);
+
+          // 5 Rings per Arm
           for (let k = 0; k < 5; k++) {
             const ringIdx = arm.offset + k;
             const ring = tenRings[ringIdx];
+            const smooth = ringSmoothData[ringIdx];
 
-            // 5 rings distributed evenly along the forearm with natural anatomical spacing
-            const slotFrac = 0.22 + k * 0.14;
+            // -----------------------------------------------------------------
+            // MOVIE-ACCURATE LOWER FOREARM RESTING SLOTS
+            // In the movie, the 5 rings stack tightly right above the wrist joint!
+            // Ring 4 = closest to wrist (0.88), Ring 0 = highest on lower forearm (0.60)
+            // -----------------------------------------------------------------
+            const slotFrac = 0.60 + k * 0.07;
             const targetSlotX = arm.elbow.x + (arm.wrist.x - arm.elbow.x) * slotFrac;
             const targetSlotY = arm.elbow.y + (arm.wrist.y - arm.elbow.y) * slotFrac;
             const targetSlotZ = (arm.elbow.z || 0) + ((arm.wrist.z || 0) - (arm.elbow.z || 0)) * slotFrac + 15;
 
-            // Forearm thickness taper (wider at elbow k=0, tapering down towards wrist k=4)
-            const taperScale = 1.08 - k * 0.04;
+            // Anatomical muscular taper: 1.05x higher on forearm, 0.95x at wrist bone
+            const taperScale = 1.05 - k * 0.025;
 
-            let curX = targetSlotX;
-            let curY = targetSlotY;
-            let curZ = targetSlotZ;
-            let curScale = ringRad * taperScale;
-            let curDir = armDir3D.clone();
+            // Subtle harmonic living Qi breathing
+            const qiBreath = Math.sin(timeVal * 2.5 + k * 0.4) * 0.02;
 
-            // -----------------------------------------------------------------
-            // A. CINEMATIC SEQUENTIAL HAND-ENTRY ANIMATION (VISIBLE ON SCREEN)
-            // -----------------------------------------------------------------
+            let targetX = targetSlotX;
+            let targetY = targetSlotY;
+            let targetZ = targetSlotZ;
+            let targetScale = baseRingRad * (taperScale + qiBreath);
+            let targetDir = armDir3D.clone();
+
+            // =================================================================
+            // 1. CINEMATIC WEARING SEQUENCE: SLIDING OVER HAND SMOOTH & CORRECT
+            // =================================================================
             if (ringsState.summonActive) {
-              const triggerTime = k * 0.14;
-              const duration = 0.26;
+              const ringDelay = k * 0.11;
+              const duration = 0.44;
+              const u = Math.min(1.0, Math.max(0.0, (ringsState.summonProgress - ringDelay) / duration));
+              const easeU = u * u * (3.0 - 2.0 * u); // Smooth cubic hermite curve
 
-              if (ringsState.summonProgress < triggerTime) {
-                // Phase 0: Hovering in an energetic golden constellation directly in front of chest/shoulder
-                // Positioned below top HUD so rings are 100% visible
-                const haloAngle = timeVal * 2.2 + ringIdx * 0.628;
-                const haloRadius = 75 + k * 18;
-                curX = arm.wrist.x + arm.sign * haloRadius + Math.cos(haloAngle) * 28;
-                curY = arm.wrist.y + 35 + Math.sin(haloAngle) * 25;
-                curZ = 55 + Math.sin(haloAngle * 2) * 18;
-                curScale = ringRad * 1.22;
-                // Facing directly forward toward camera with subtle hypnotic gyroscopic precession
-                curDir.set(Math.sin(haloAngle) * 0.20, Math.cos(haloAngle) * 0.20, 0.96).normalize();
-              } else if (ringsState.summonProgress < triggerTime + duration) {
-                // VISIBLY SLIDING OVER THE HAND (Fingertips -> Palm/Knuckles -> Wrist -> Forearm Slot)
-                const u = (ringsState.summonProgress - triggerTime) / duration;
-                const easeU = Math.min(1.0, Math.max(0.0, 1.0 - Math.pow(1.0 - u, 2.2)));
+              // Hand Waypoints
+              const tipX = arm.wrist.x + handDir3D.x * (handLen * 1.25);
+              const tipY = arm.wrist.y - handDir3D.y * (handLen * 1.25);
+              const tipZ = (arm.wrist.z || 0) + 30;
 
-                if (easeU < 0.32) {
-                  // Phase 1: Swooping from constellation down to Fingertips
-                  const subU = easeU / 0.32;
-                  const startX = arm.wrist.x + arm.sign * (75 + k * 18);
-                  const startY = arm.wrist.y + 35;
-                  curX = startX + (arm.index.x - startX) * subU;
-                  curY = startY + (arm.index.y - startY) * subU;
-                  curZ = 55 * (1.0 - subU) + 26;
-                  curScale = ringRad * (1.28 - subU * 0.08);
-                  curDir.set(handDir3D.x * 0.8, handDir3D.y * 0.8, 0.75).normalize();
-                } else if (easeU < 0.72) {
-                  // Phase 2: SLIDING OVER THE PALM & KNUCKLES (Ring expands to pass over hand)
-                  const subU = (easeU - 0.32) / 0.40;
-                  curX = arm.index.x + (arm.wrist.x - arm.index.x) * subU;
-                  curY = arm.index.y + (arm.wrist.y - arm.index.y) * subU;
-                  curZ = 26;
-                  // Expands by 22% so it visibly slides OVER the hand
-                  curScale = ringRad * (1.20 + Math.sin(subU * Math.PI) * 0.22);
-                  curDir.copy(handDir3D);
-                } else {
-                  // Phase 3: Sliding down forearm from wrist to target resting slot
-                  const subU = (easeU - 0.72) / 0.28;
-                  curX = arm.wrist.x + (targetSlotX - arm.wrist.x) * subU;
-                  curY = arm.wrist.y + (targetSlotY - arm.wrist.y) * subU;
-                  curZ = 20;
-                  // Smoothly tapering down to forearm fit
-                  curScale = ringRad * (1.20 * (1.0 - subU) + taperScale * subU);
-                  curDir.copy(armDir3D);
-                }
+              if (easeU < 0.22) {
+                // Phase 1: Swooping from constellation down to Fingertips
+                const subU = easeU / 0.22;
+                const haloAngle = timeVal * 2.0 + ringIdx * 0.628;
+                const startX = arm.wrist.x + arm.sign * (70 + k * 16) + Math.cos(haloAngle) * 20;
+                const startY = arm.wrist.y + 30 + Math.sin(haloAngle) * 20;
+                const startZ = 60 + Math.sin(haloAngle * 2) * 15;
+
+                targetX = startX + (tipX - startX) * subU;
+                targetY = startY + (tipY - startY) * subU;
+                targetZ = startZ + (tipZ - startZ) * subU;
+                targetScale = baseRingRad * 1.15;
+                targetDir.copy(handDir3D);
+              } else if (easeU < 0.65) {
+                // Phase 2: SLIDING VISIBLY OVER THE FINGERS, PALM & KNUCKLES
+                // Ring EXPANDS by 35% so it visibly slips OVER the wide knuckles and thumb!
+                const subU = (easeU - 0.22) / 0.43;
+                targetX = tipX + (arm.wrist.x - tipX) * subU;
+                targetY = tipY + (arm.wrist.y - tipY) * subU;
+                targetZ = tipZ + ((arm.wrist.z || 0) + 18 - tipZ) * subU;
+                // Peak expansion at palm center (subU = 0.5)
+                targetScale = baseRingRad * (1.10 + Math.sin(subU * Math.PI) * 0.35);
+                targetDir.copy(handDir3D);
+              } else if (easeU < 1.0) {
+                // Phase 3: SLIDING DOWN FOREARM FROM WRIST TO TARGET RESTING SLOT
+                // Contracts snugly down to exact forearm muscular taper!
+                const subU = (easeU - 0.65) / 0.35;
+                targetX = arm.wrist.x + (targetSlotX - arm.wrist.x) * subU;
+                targetY = arm.wrist.y + (targetSlotY - arm.wrist.y) * subU;
+                targetZ = (arm.wrist.z || 0) + (targetSlotZ - (arm.wrist.z || 0)) * subU;
+                targetScale = baseRingRad * (1.25 * (1.0 - subU) + taperScale * subU);
+                targetDir.lerpVectors(handDir3D, armDir3D, subU).normalize();
               } else {
-                // Phase 4: Reached Forearm Slot -> THE LOCKING MOMENT
-                curX = targetSlotX;
-                curY = targetSlotY;
-                curZ = 16;
-                curScale = ringRad * taperScale;
-                curDir.copy(armDir3D);
+                // Phase 4: Locked into Resting Slot
+                targetX = targetSlotX;
+                targetY = targetSlotY;
+                targetZ = targetSlotZ;
+                targetScale = baseRingRad * taperScale;
+                targetDir.copy(armDir3D);
 
                 if (!ringsState.ringLockedFlags[ringIdx]) {
                   ringsState.ringLockedFlags[ringIdx] = true;
-                  triggerShockwave(targetSlotX, targetSlotY, 280, ringsState.mode === 'SHANG_CHI_GOLD' ? '255, 180, 20' : '0, 210, 255');
-                  playRingClangSFX(1.0 + k * 0.12);
+                  playRingClangSFX(1.0 + k * 0.14);
                 }
               }
             } else if (ringsState.shieldActive) {
-              // ---------------------------------------------------------------
-              // B. TAI CHI 10-RING REVOLVING DRAGON DEFENSE SHIELD
-              // ---------------------------------------------------------------
-              const shieldAngle = timeVal * 3.5 + (ringIdx / 10) * Math.PI * 2;
-              const shieldRadius = Math.max(160, armLen * 0.85);
-              curX = shieldMidX + Math.cos(shieldAngle) * shieldRadius;
-              curY = shieldMidY + Math.sin(shieldAngle) * shieldRadius;
-              curZ = 35 + Math.sin(shieldAngle * 3) * 20;
-              curScale = ringRad * 1.15;
-              curDir.set(Math.cos(shieldAngle) * 0.22, Math.sin(shieldAngle) * 0.22, 0.94).normalize();
+              // ===============================================================
+              // 2. TAI CHI 10-RING REVOLVING DRAGON DEFENSE SHIELD
+              // ===============================================================
+              const shieldAngle = timeVal * 3.2 + (ringIdx / 10) * Math.PI * 2;
+              const shieldRadius = Math.max(160, refArmLen * 0.85);
+              targetX = shieldMidX + Math.cos(shieldAngle) * shieldRadius;
+              targetY = shieldMidY + Math.sin(shieldAngle) * shieldRadius;
+              targetZ = 35 + Math.sin(shieldAngle * 3) * 18;
+              targetScale = baseRingRad * 1.15;
+              targetDir.set(Math.cos(shieldAngle) * 0.22, Math.sin(shieldAngle) * 0.22, 0.95).normalize();
             } else if (arm.strike.active) {
-              // ---------------------------------------------------------------
-              // C. TEN RINGS CANNON / WHIP PROJECTILE STRIKE
-              // ---------------------------------------------------------------
-              const p = arm.strike.progress;
-              const maxDist = 480 + k * 45;
-              let forwardDist = 0;
+              // ===============================================================
+              // 3. CINEMATIC SHOOT OF RINGS: SLIDING OVER KNUCKLES & FIST TO STRIKE
+              // ===============================================================
+              const p = arm.strike.progress; // 0.0 -> 1.0 (outward 0.0->0.5, inward 0.5->1.0)
+              const launchStagger = (4 - k) * 0.04; // Ring 4 at wrist launches first!
+              const maxDist = 520 + k * 35;
+
+              // Fist point (end of knuckles)
+              const fistX = arm.wrist.x + handDir3D.x * (handLen * 0.95);
+              const fistY = arm.wrist.y - handDir3D.y * (handLen * 0.95);
+              const fistZ = (arm.wrist.z || 0) + 18;
 
               if (p < 0.5) {
-                // Firing forward
-                const forwardU = p / 0.5;
-                forwardDist = Math.sin(forwardU * Math.PI * 0.5) * maxDist;
-              } else {
-                // Whipping back onto forearm
-                const returnU = (p - 0.5) / 0.5;
-                forwardDist = Math.cos(returnU * Math.PI * 0.5) * maxDist;
-              }
+                // --- OUTWARD LAUNCH ---
+                const u = p / 0.5;
+                const ringU = Math.min(1.0, Math.max(0.0, (u - launchStagger) / (1.0 - 0.16)));
 
-              // Spiral motion along strike direction
-              const spiralAngle = timeVal * 12.0 + k * 1.2;
-              curX = targetSlotX + arm.strike.dir.x * forwardDist + Math.cos(spiralAngle) * 35;
-              curY = targetSlotY - arm.strike.dir.y * forwardDist + Math.sin(spiralAngle) * 35;
-              curZ = 20 + Math.sin(spiralAngle) * 30;
-              curScale = ringRad * (1.0 + (forwardDist / maxDist) * 0.35);
-              curDir.copy(arm.strike.dir);
+                if (ringU < 0.28) {
+                  // Phase A: Sliding along forearm, over wrist and knuckles
+                  // EXPANDS by 25% so it visibly passes OVER the fist!
+                  const subU = ringU / 0.28;
+                  targetX = targetSlotX + (fistX - targetSlotX) * subU;
+                  targetY = targetSlotY + (fistY - targetSlotY) * subU;
+                  targetZ = targetSlotZ + (fistZ - targetSlotZ) * subU;
+                  targetScale = baseRingRad * (taperScale + Math.sin(subU * Math.PI) * 0.25);
+                  targetDir.lerpVectors(armDir3D, punchDir, subU).normalize();
+                } else {
+                  // Phase B: Blasting forward as kinetic projectile
+                  const subU = (ringU - 0.28) / 0.72;
+                  const forwardDist = Math.sin(subU * Math.PI * 0.5) * maxDist;
+                  const spiralAngle = timeVal * 14.0 + k * 1.2;
+                  targetX = fistX + punchDir.x * forwardDist + Math.cos(spiralAngle) * 22;
+                  targetY = fistY - punchDir.y * forwardDist + Math.sin(spiralAngle) * 22;
+                  targetZ = fistZ + punchDir.z * forwardDist + Math.sin(spiralAngle * 2) * 18;
+                  targetScale = baseRingRad * (1.0 + (forwardDist / maxDist) * 0.30);
+                  targetDir.copy(punchDir);
+                }
+              } else {
+                // --- INWARD RETURN ---
+                const u = (p - 0.5) / 0.5;
+                const ringU = Math.min(1.0, Math.max(0.0, (u - k * 0.04) / (1.0 - 0.16)));
+
+                if (ringU < 0.72) {
+                  // Phase C: Whipping back from distance toward fist
+                  const subU = ringU / 0.72;
+                  const forwardDist = Math.cos(subU * Math.PI * 0.5) * maxDist;
+                  const spiralAngle = timeVal * 12.0 + k * 1.2;
+                  targetX = fistX + punchDir.x * forwardDist + Math.cos(spiralAngle) * 16;
+                  targetY = fistY - punchDir.y * forwardDist + Math.sin(spiralAngle) * 16;
+                  targetZ = fistZ + punchDir.z * forwardDist;
+                  targetScale = baseRingRad * (1.0 + (forwardDist / maxDist) * 0.25);
+                  targetDir.copy(punchDir);
+                } else {
+                  // Phase D: Sliding back OVER the fist and wrist into forearm slot!
+                  const subU = (ringU - 0.72) / 0.28;
+                  targetX = fistX + (targetSlotX - fistX) * subU;
+                  targetY = fistY + (targetSlotY - fistY) * subU;
+                  targetZ = fistZ + (targetSlotZ - fistZ) * subU;
+                  targetScale = baseRingRad * (1.20 * (1.0 - subU) + taperScale * subU);
+                  targetDir.lerpVectors(punchDir, armDir3D, subU).normalize();
+                }
+              }
             }
 
-            // Apply 3D Transform to Ring
-            ring.position.set(curX - cxHalf, cyHalf - curY, curZ);
-            ring.scale.set(curScale, curScale, curScale);
-            ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curDir);
-            ring.rotateOnAxis(new THREE.Vector3(0, 0, 1), timeVal * 6.5 + k * 0.85);
+            // -----------------------------------------------------------------
+            // BUTTERY-SMOOTH ADAPTIVE INERTIA & QUATERNION SLERP FILTER
+            // Eliminates 100% of jitter when still; instant zero-lag response when moving!
+            // -----------------------------------------------------------------
+            const threeTargetX = targetX - cxHalf;
+            const threeTargetY = cyHalf - targetY;
+            const threeTargetZ = targetZ;
+
+            const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), targetDir);
+
+            if (!smooth.initialized) {
+              ring.position.set(threeTargetX, threeTargetY, threeTargetZ);
+              ring.scale.set(targetScale, targetScale, targetScale);
+              ring.quaternion.copy(targetQuat);
+              smooth.pos.set(threeTargetX, threeTargetY, threeTargetZ);
+              smooth.scale = targetScale;
+              smooth.quat.copy(targetQuat);
+              smooth.initialized = true;
+            } else {
+              // Adaptive smoothing: heavy damping when still (rock solid), snappy when fast!
+              const dX = threeTargetX - ring.position.x;
+              const dY = threeTargetY - ring.position.y;
+              const dZ = threeTargetZ - ring.position.z;
+              const moveDist = Math.hypot(dX, dY, dZ);
+              const alphaPos = moveDist > 25 ? 0.88 : (moveDist > 8 ? 0.65 : 0.38);
+
+              ring.position.x += dX * alphaPos;
+              ring.position.y += dY * alphaPos;
+              ring.position.z += dZ * alphaPos;
+
+              ring.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.45);
+              ring.quaternion.slerp(targetQuat, 0.40);
+            }
 
           }
         });
@@ -3155,6 +3263,26 @@
 
     // Initial HUD timer starts immediately
     resetHudVisibility();
+
+    // Hotkeys: [SPACE] for Strike, [S] for Summon/Wear, [D] for Shield, [Q] for Qi toggle, [H] for HUD, [F] for Fullscreen
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        // Trigger punch strike on left or right arm
+        if (!ringsState.strikeL.active && !ringsState.strikeR.active) {
+          ringsState.strikeR.active = true;
+          ringsState.strikeR.progress = 0.0;
+          ringsState.strikeR.dir.set(0.7, 0.3, 0.6).normalize();
+          playRingClangSFX(1.4);
+        }
+      } else if (e.key === 's' || e.key === 'S') {
+        ringsState.triggerSummon();
+      } else if (e.key === 'q' || e.key === 'Q') {
+        ringsState.toggleMode();
+      } else if (e.key === 'd' || e.key === 'D') {
+        ringsState.shieldActive = !ringsState.shieldActive;
+      }
+    });
 
     // Hotkeys: [H] for HUD toggle, [F] for Fullscreen
     window.addEventListener('keydown', (e) => {
