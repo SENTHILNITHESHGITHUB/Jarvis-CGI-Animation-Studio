@@ -2076,25 +2076,13 @@
           if (ringsState.strikeR.progress >= 1.0) ringsState.strikeR.active = false;
         }
 
-        // Gesture Detection 1: 3D Kinetic Punch Strike (Forward thrust with fist)
+        // Gesture Biometrics (Reach, 3D Velocity & Distance)
         const reachL = Math.hypot(poseCurrent.lw.x - poseCurrent.ls.x, poseCurrent.lw.y - poseCurrent.ls.y);
         const reachVelL = (reachL - (ringsState._prevReachL || reachL)) * 30;
         ringsState._prevReachL = reachL;
         const dzL = ((poseCurrent.lw.z || 0) - (ringsState._prevLwZ || (poseCurrent.lw.z || 0))) * 600;
         ringsState._prevLwZ = poseCurrent.lw.z || 0;
         const punchVel3DL = Math.hypot(speedL, dzL);
-
-        if ((reachVelL > 240 || punchVel3DL > 400) && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive) {
-          ringsState.strikeL.active = true;
-          ringsState.strikeL.progress = 0.0;
-          const pdx = poseCurrent.lw.x - poseCurrent.le.x;
-          const pdy = poseCurrent.le.y - poseCurrent.lw.y;
-          const pdz = ((poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0)) + 0.35;
-          const plen = Math.hypot(pdx, pdy, pdz) || 1;
-          ringsState.strikeL.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
-          playRingClangSFX(1.4);
-          showQiToast("💥 KUNG FU STRIKE: TEN RINGS LAUNCHED!");
-        }
 
         const reachR = Math.hypot(poseCurrent.rw.x - poseCurrent.rs.x, poseCurrent.rw.y - poseCurrent.rs.y);
         const reachVelR = (reachR - (ringsState._prevReachR || reachR)) * 30;
@@ -2103,7 +2091,40 @@
         ringsState._prevRwZ = poseCurrent.rw.z || 0;
         const punchVel3DR = Math.hypot(speedR, dzR);
 
-        if ((reachVelR > 240 || punchVel3DR > 400) && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
+        const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
+        const wristsRaised = (poseCurrent.lw.y < hipsY + 70) && (poseCurrent.rw.y < hipsY + 70);
+        const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x);
+
+        // GESTURE 1: DUAL PALM DRAGON BLAST (Both hands thrusting forward simultaneously)
+        const isDualThrust = (reachVelL > 110 && reachVelR > 110) || (punchVel3DL > 180 && punchVel3DR > 180);
+        if (isDualThrust && !ringsState.strikeL.active && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive) {
+          ringsState.strikeL.active = true; ringsState.strikeL.progress = 0.0;
+          ringsState.strikeR.active = true; ringsState.strikeR.progress = 0.0;
+          const pdxL = poseCurrent.lw.x - poseCurrent.le.x, pdyL = poseCurrent.le.y - poseCurrent.lw.y;
+          const pdxR = poseCurrent.rw.x - poseCurrent.re.x, pdyR = poseCurrent.re.y - poseCurrent.rw.y;
+          ringsState.strikeL.dir.set(pdxL, pdyL, 0.40).normalize();
+          ringsState.strikeR.dir.set(pdxR, pdyR, 0.40).normalize();
+          playRingClangSFX(1.6);
+          showQiToast("🐉 DUAL DRAGON BLAST: 10 RINGS BARRAGE!");
+        }
+
+        // GESTURE 2: LEFT FIST KINETIC PUNCH STRIKE
+        const isPunchL = (reachVelL > 120 || punchVel3DL > 180 || speedL > 220);
+        if (isPunchL && !ringsState.strikeL.active && ringsState.isLocked && !ringsState.summonActive && !isDualThrust) {
+          ringsState.strikeL.active = true;
+          ringsState.strikeL.progress = 0.0;
+          const pdx = poseCurrent.lw.x - poseCurrent.le.x;
+          const pdy = poseCurrent.le.y - poseCurrent.lw.y;
+          const pdz = ((poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0)) + 0.35;
+          const plen = Math.hypot(pdx, pdy, pdz) || 1;
+          ringsState.strikeL.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
+          playRingClangSFX(1.4);
+          showQiToast("💥 KUNG FU STRIKE: LEFT FIST BLAST!");
+        }
+
+        // GESTURE 3: RIGHT FIST KINETIC PUNCH STRIKE
+        const isPunchR = (reachVelR > 120 || punchVel3DR > 180 || speedR > 220);
+        if (isPunchR && !ringsState.strikeR.active && ringsState.isLocked && !ringsState.summonActive && !isDualThrust) {
           ringsState.strikeR.active = true;
           ringsState.strikeR.progress = 0.0;
           const pdx = poseCurrent.rw.x - poseCurrent.re.x;
@@ -2112,41 +2133,45 @@
           const plen = Math.hypot(pdx, pdy, pdz) || 1;
           ringsState.strikeR.dir.set(pdx / plen, pdy / plen, pdz / plen).normalize();
           playRingClangSFX(1.4);
-          showQiToast("💥 KUNG FU STRIKE: TEN RINGS LAUNCHED!");
+          showQiToast("💥 KUNG FU STRIKE: RIGHT FIST BLAST!");
         }
 
-        // Gesture Detection 2: Tai Chi Dragon Mandala Shield (Crossed Wrists across chest)
-        const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
-        const wristsRaised = (poseCurrent.lw.y < hipsY + 60) && (poseCurrent.rw.y < hipsY + 60);
-        const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x); // Left wrist crossed over right
-        ringsState.shieldActive = ((wristDist < 135 || (wristsCrossed && wristDist < 230)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive);
+        // GESTURE 4: TAI CHI DRAGON MANDALA DEFENSE SHIELD (Crossed Wrists across chest)
+        const isShieldPosture = (wristDist < 160 || (wristsCrossed && wristDist < 260)) && wristsRaised && ringsState.isLocked && !ringsState.summonActive;
+        if (isShieldPosture && !ringsState.shieldActive) {
+          ringsState.shieldActive = true;
+          playRingClangSFX(1.25);
+          showQiToast("🛡️ TAI CHI MANDALA: DRAGON DEFENSE SHIELD!");
+        } else if (!isShieldPosture && ringsState.shieldActive) {
+          ringsState.shieldActive = false;
+        }
 
-        // Gesture Detection 3: Qi Color Shift (Clapping / Touching Palms Together)
+        // GESTURE 5: QI COLOR SHIFT (Clapping / Touching Palms Together)
         if (wristDist < 85 && !ringsState._clapCooldown) {
           ringsState._clapCooldown = true;
           ringsState.toggleMode();
           playRingClangSFX(1.8);
           showQiToast(ringsState.mode === 'SHANG_CHI_GOLD' ? "🔥 QI: TA LO GOLDEN DRAGON" : "⚡ QI: WENWU COSMIC LIGHTNING");
-          setTimeout(() => { ringsState._clapCooldown = false; }, 1200);
+          setTimeout(() => { ringsState._clapCooldown = false; }, 900);
         }
 
-        // Gesture Detection 4: Open Palms Forward / Summon Stance (Cinematic Wear of Ten Rings)
+        // GESTURE 6: OPEN PALMS FORWARD / SUMMON STANCE (Wear Ten Rings onto Arms)
         if (!ringsState._summonCooldown) ringsState._summonCooldown = 0;
         if (ringsState._summonCooldown > 0) ringsState._summonCooldown--;
 
-        const wristsApart = wristDist > 140 && wristDist < 850;
+        const wristsApart = wristDist > 140 && wristDist < 880;
         const palmsUp = (poseCurrent.lindex && poseCurrent.rindex) ?
-          (poseCurrent.lindex.y < poseCurrent.lw.y + 45 && poseCurrent.rindex.y < poseCurrent.rw.y + 45) : true;
-        const handsEngaged = (reachL > shoulderW * 0.40 || reachR > shoulderW * 0.40);
+          (poseCurrent.lindex.y < poseCurrent.lw.y + 50 && poseCurrent.rindex.y < poseCurrent.rw.y + 50) : true;
+        const handsEngaged = (reachL > shoulderW * 0.35 || reachR > shoulderW * 0.35);
 
         // Outward sweep velocity (Qi gathering motion)
         const outwardSpread = (wristDist - (ringsState._prevWristDist || wristDist)) * 30;
         ringsState._prevWristDist = wristDist;
 
-        const isSummonPosture = wristsApart && wristsRaised && (palmsUp || outwardSpread > 160) && handsEngaged && !wristsCrossed;
+        const isSummonPosture = wristsApart && wristsRaised && (palmsUp || outwardSpread > 140) && handsEngaged && !wristsCrossed && !ringsState.shieldActive;
 
         if (isSummonPosture && !ringsState.summonActive && ringsState._summonCooldown === 0) {
-          ringsState._summonCooldown = 150; // ~2.5 second debounce
+          ringsState._summonCooldown = 75; // ~1.2 second debounce
           ringsState.triggerSummon();
         }
 
@@ -2343,15 +2368,38 @@
               }
             } else if (ringsState.shieldActive) {
               // ===============================================================
-              // 2. TAI CHI 10-RING REVOLVING DRAGON DEFENSE SHIELD
+              // 2. TAI CHI 10-RING REVOLVING CONCENTRIC DRAGON MANDALA SHIELD
+              // Authentic Movie Mandala: 5 Inner Rings CW, 5 Outer Rings CCW!
               // ===============================================================
-              const shieldAngle = timeVal * 3.2 + (ringIdx / 10) * Math.PI * 2;
-              const shieldRadius = Math.max(160, refArmLen * 0.85);
+              const isOuterRing = (ringIdx >= 5);
+              const subIdx = ringIdx % 5;
+              const spinDir = isOuterRing ? -1.0 : 1.0;
+              const spinSpeed = isOuterRing ? 4.2 : 3.0;
+              const shieldAngle = timeVal * spinSpeed * spinDir + (subIdx / 5.0) * Math.PI * 2;
+              const shieldRadius = isOuterRing ? Math.max(140, refArmLen * 0.75) : Math.max(75, refArmLen * 0.40);
+
               targetX = shieldMidX + Math.cos(shieldAngle) * shieldRadius;
               targetY = shieldMidY + Math.sin(shieldAngle) * shieldRadius;
-              targetZ = 35 + Math.sin(shieldAngle * 3) * 18;
-              targetScale = baseRingRad * 1.15;
-              targetDir.set(Math.cos(shieldAngle) * 0.22, Math.sin(shieldAngle) * 0.22, 0.95).normalize();
+              targetZ = isOuterRing ? 45 : 25;
+              targetScale = baseRingRad * (isOuterRing ? 1.15 : 0.95);
+              // Face directly toward camera like a solid forcefield barrier
+              targetDir.set(Math.cos(shieldAngle) * 0.15, Math.sin(shieldAngle) * 0.15, 0.98).normalize();
+
+              // Draw connecting golden plasma lightning arcs between rotating shield rings
+              if (subIdx === 0 && arm.offset === 0) {
+                hudCtx.save();
+                hudCtx.strokeStyle = (ringsState.mode === 'SHANG_CHI_GOLD') ? 'rgba(255, 195, 45, 0.70)' : 'rgba(0, 225, 255, 0.70)';
+                hudCtx.lineWidth = 2.5;
+                hudCtx.shadowColor = (ringsState.mode === 'SHANG_CHI_GOLD') ? '#ff8800' : '#00aaff';
+                hudCtx.shadowBlur = 15;
+                hudCtx.beginPath();
+                hudCtx.arc(shieldMidX, shieldMidY, Math.max(140, refArmLen * 0.75), 0, Math.PI * 2);
+                hudCtx.stroke();
+                hudCtx.beginPath();
+                hudCtx.arc(shieldMidX, shieldMidY, Math.max(75, refArmLen * 0.40), 0, Math.PI * 2);
+                hudCtx.stroke();
+                hudCtx.restore();
+              }
             } else if (arm.strike.active) {
               // ===============================================================
               // 3. CINEMATIC SHOOT OF RINGS: SLIDING OVER KNUCKLES & FIST TO STRIKE
@@ -3307,11 +3355,23 @@
         toggleHud();
       } else if (e.code === 'Space') {
         e.preventDefault();
-        if (!ringsState.strikeL.active && !ringsState.strikeR.active) {
-          ringsState.strikeR.active = true;
-          ringsState.strikeR.progress = 0.0;
-          ringsState.strikeR.dir.set(0.7, 0.3, 0.6).normalize();
-          playRingClangSFX(1.4);
+        if (e.shiftKey) {
+          // Dual Dragon Blast (Both arms fire simultaneously)
+          ringsState.strikeL.active = true; ringsState.strikeL.progress = 0.0;
+          ringsState.strikeR.active = true; ringsState.strikeR.progress = 0.0;
+          ringsState.strikeL.dir.set(-0.35, 0.15, 0.75).normalize();
+          ringsState.strikeR.dir.set(0.35, 0.15, 0.75).normalize();
+          playRingClangSFX(1.6);
+          showQiToast("🐉 DUAL DRAGON BLAST: 10 RINGS BARRAGE!");
+        } else {
+          // Kinetic Punch Blast
+          if (!ringsState.strikeR.active) {
+            ringsState.strikeR.active = true;
+            ringsState.strikeR.progress = 0.0;
+            ringsState.strikeR.dir.set(0.40, 0.20, 0.85).normalize();
+            playRingClangSFX(1.4);
+            showQiToast("💥 KUNG FU STRIKE: RIGHT FIST BLAST!");
+          }
         }
       } else if (e.key === 's' || e.key === 'S') {
         ringsState.triggerSummon();
