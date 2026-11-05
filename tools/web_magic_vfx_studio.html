@@ -248,6 +248,7 @@
       <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
       <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
       <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.5); color:#38bdf8;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: OFF</div>
+      <div class="badge badge-interactive" id="btnInspectProp" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Open 360° 3D Movie Prop Inspector (Drag & Zoom)">🔍 3D PROP INSPECT</div>
       <div class="badge badge-interactive" id="btnOmniRoute" style="background:rgba(99, 102, 241, 0.18); border-color:rgba(99, 102, 241, 0.6); color:#a5b4fc;" title="OmniRoute AI Gateway Online (Port 20128) - Click to trigger AI Director Cue">🌐 OMNIROUTE: ONLINE (20128)</div>
       <div class="badge badge-interactive" id="btnSource" style="background:rgba(234, 179, 8, 0.15); border-color:rgba(234, 179, 8, 0.5); color:#facc15;" title="Switch Live Webcam / 4K Demo Shot">📹 SOURCE: LIVE CAM</div>
       <div class="badge badge-interactive" id="btnAudio" style="background:rgba(147, 51, 234, 0.15); border-color:rgba(147, 51, 234, 0.5); color:#c084fc;" title="Toggle Cinematic SFX Audio">🔊 SFX: OFF</div>
@@ -255,6 +256,46 @@
       <div class="badge" id="hudSpeed">SPEED: 0 PX/S</div>
       <div class="badge" id="hudStance">BRAHMĀSTRA AGNYĀSTRA</div>
       <div class="badge" id="hudFps">FPS: 60</div>
+    </div>
+  </div>
+
+  <!-- 3D Movie Prop Inspector Modal Overlay -->
+  <div id="propInspectModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:90; flex-direction:column; justify-content:space-between; padding:110px 40px 100px 40px; box-sizing:border-box;">
+    <!-- Top Info Card -->
+    <div style="background:rgba(10, 14, 26, 0.92); border:1px solid rgba(245, 158, 11, 0.7); border-radius:18px; padding:18px 28px; max-width:660px; pointer-events:auto; backdrop-filter:blur(24px); box-shadow:0 20px 50px rgba(0,0,0,0.85);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-size:11px; font-weight:800; letter-spacing:2px; color:#f59e0b; text-transform:uppercase;">MARVEL CINEMATIC PROP ARCHIVE // AUTHENTIC REPLICA</span>
+        <span style="background:rgba(245, 158, 11, 0.2); border:1px solid #f59e0b; color:#fde047; font-size:10px; font-weight:700; padding:3px 10px; border-radius:12px;">360° 3D ROTATABLE</span>
+      </div>
+      <div style="font-size:20px; font-weight:900; color:#fff; letter-spacing:1px; margin-bottom:6px;">THE TEN RINGS OF THE MANDARIN & SHANG-CHI</div>
+      <div style="font-size:12px; color:#cbd5e1; line-height:1.5; margin-bottom:12px;">
+        Forged from thousands of years old Ta Lo extraterrestrial alloy. Matches the original physical movie prop with flat chamfered antique copper-bronze side faces, dual elevated protective outer rails, and a recessed channel encasing chiseled silver Damascus steel seal runes radiating molten Qi fire.
+      </div>
+      <!-- Specification Specs Grid -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px; color:#94a3b8; margin-bottom:14px;">
+        <div>🔸 <strong style="color:#fde047;">Alloy:</strong> Forged Antique Copper (PBR Metalness 96%)</div>
+        <div>🔸 <strong style="color:#fde047;">Inlay:</strong> Chiseled Silver Damascus Steel Runes</div>
+        <div>🔸 <strong style="color:#fde047;">Normals:</strong> 2048x256 Sobel Tangent Relief (2.4x)</div>
+        <div>🔸 <strong style="color:#fde047;">Energy:</strong> Living Ta Lo Molten Qi Core (Emissive 2.6x)</div>
+      </div>
+      <!-- Modal Action Buttons -->
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button id="btnModalToggleQi" style="background:linear-gradient(135deg, #f59e0b, #d97706); border:none; color:#000; font-weight:800; font-size:11px; padding:7px 16px; border-radius:8px; cursor:pointer; letter-spacing:0.5px;">🎨 TOGGLE QI (GOLD / BLUE)</button>
+        <button id="btnModalResetCam" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#e2e8f0; font-weight:700; font-size:11px; padding:7px 16px; border-radius:8px; cursor:pointer;">🔄 RESET BEAUTY ANGLE</button>
+        <button id="btnModalReplayEntry" style="background:rgba(245, 158, 11, 0.2); border:1px solid rgba(245, 158, 11, 0.6); color:#fde047; font-weight:700; font-size:11px; padding:7px 16px; border-radius:8px; cursor:pointer;">⚡ REPLAY MOVIE ENTRY</button>
+        <button id="btnModalCloseInspect" style="background:rgba(239, 68, 68, 0.25); border:1px solid rgba(239, 68, 68, 0.7); color:#fca5a5; font-weight:700; font-size:11px; padding:7px 16px; border-radius:8px; cursor:pointer;">❌ EXIT INSPECTOR (ESC)</button>
+      </div>
+    </div>
+
+    <!-- Bottom Instructions Footer -->
+    <div style="align-self:center; background:rgba(10, 14, 26, 0.75); border:1px solid rgba(255,255,255,0.12); border-radius:24px; padding:8px 24px; font-size:12px; font-weight:600; color:#94a3b8; backdrop-filter:blur(16px); pointer-events:auto; display:flex; gap:16px;">
+      <span>🖱️ <strong style="color:#fff;">Click & Drag</strong> to rotate 360°</span>
+      <span>•</span>
+      <span>🔍 <strong style="color:#fff;">Scroll Wheel</strong> to Zoom</span>
+      <span>•</span>
+      <span>⌨️ <strong style="color:#fff;">[I]</strong> Toggle Inspector</span>
+      <span>•</span>
+      <span>⌨️ <strong style="color:#fff;">[ESC]</strong> Return to MoCap</span>
     </div>
   </div>
 
@@ -338,17 +379,75 @@
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.45;
 
-    // Dynamic 3D Lights (Photorealistic Specular Illumination for Metals)
-    const ambientLight = new THREE.AmbientLight(0xfff8ee, 1.3);
+    // -------------------------------------------------------------------------
+    // HOLLYWOOD CINEMATIC STUDIO LIGHTING & EQUIRECTANGULAR ENVIRONMENT MAP
+    // -------------------------------------------------------------------------
+    function createStudioEnvironmentMap() {
+      const c = document.createElement('canvas');
+      c.width = 1024; c.height = 512;
+      const ctx = c.getContext('2d');
+
+      // Studio horizon gradient: deep charcoal to warm rich bronze
+      const grad = ctx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0.0, '#110f14');
+      grad.addColorStop(0.42, '#281d18');
+      grad.addColorStop(0.50, '#5a3824'); // warm glowing metallic horizon
+      grad.addColorStop(0.58, '#201610');
+      grad.addColorStop(1.0, '#0a0806');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1024, 512);
+
+      // Overhead Softbox (High key specular highlight)
+      const keySoft = ctx.createRadialGradient(512, 110, 10, 512, 110, 180);
+      keySoft.addColorStop(0.0, 'rgba(255, 245, 230, 1.0)');
+      keySoft.addColorStop(0.5, 'rgba(255, 215, 170, 0.7)');
+      keySoft.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+      ctx.fillStyle = keySoft;
+      ctx.beginPath();
+      ctx.ellipse(512, 110, 300, 95, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Golden Rim Lamp (Left kick)
+      const leftKick = ctx.createRadialGradient(180, 256, 10, 180, 256, 150);
+      leftKick.addColorStop(0.0, 'rgba(255, 160, 40, 0.95)');
+      leftKick.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+      ctx.fillStyle = leftKick;
+      ctx.beginPath();
+      ctx.ellipse(180, 256, 170, 85, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Platinum Fill Lamp (Right kick)
+      const rightKick = ctx.createRadialGradient(844, 256, 10, 844, 256, 150);
+      rightKick.addColorStop(0.0, 'rgba(210, 235, 255, 0.85)');
+      rightKick.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+      ctx.fillStyle = rightKick;
+      ctx.beginPath();
+      ctx.ellipse(844, 256, 170, 85, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      return tex;
+    }
+
+    const studioEnvMap = createStudioEnvironmentMap();
+    scene.environment = studioEnvMap;
+
+    // Dynamic 3D Lights
+    const ambientLight = new THREE.AmbientLight(0xfff5ea, 1.5);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff2e0, 2.8);
-    keyLight.position.set(0, 450, 600);
+    const keyLight = new THREE.DirectionalLight(0xfff6e8, 3.4);
+    keyLight.position.set(150, 500, 550);
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xff9933, 1.8);
-    rimLight.position.set(0, -350, 400);
+    const rimLight = new THREE.DirectionalLight(0xff8820, 2.4);
+    rimLight.position.set(-200, -380, 450);
     scene.add(rimLight);
+
+    const fillLight = new THREE.DirectionalLight(0x80b8ff, 1.2);
+    fillLight.position.set(0, 100, 400);
+    scene.add(fillLight);
 
     const pointLightL = new THREE.PointLight(0xff7700, 5.0, 950);
     const pointLightR = new THREE.PointLight(0xff7700, 5.0, 950);
@@ -563,162 +662,228 @@
     // 100% MOVIE-ACCURATE SHANG-CHI TEN RINGS ENGINE (MATCHES REFERENCE PHOTO)
     // -------------------------------------------------------------------------
     
-    // High-Resolution 2048x256 Silver Damascus Chiseled Rune Texture Generator
-    function generateShangChiRuneTexture() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 2048;
-      canvas.height = 256;
-      const ctx = canvas.getContext('2d');
+    // -------------------------------------------------------------------------
+    // MASTERWORK PBR TEXTURE PIPELINE: COLOR + TANGENT NORMAL + EMISSIVE
+    // -------------------------------------------------------------------------
+    function generateShangChiRuneMaps() {
+      const W = 2048, H = 256;
+      
+      // 1. Color / Diffuse Canvas (Silver-Grey Damascus Steel + Deep Patina)
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = W; colorCanvas.height = H;
+      const cCtx = colorCanvas.getContext('2d');
 
-      // 1. Deep Weathered Oxidized Charcoal Iron Base
-      ctx.fillStyle = '#141210';
-      ctx.fillRect(0, 0, 2048, 256);
+      cCtx.fillStyle = '#12100e';
+      cCtx.fillRect(0, 0, W, H);
 
-      // 2. Micro Damascus Steel Grain Lines
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-      for (let i = 0; i < 1800; i++) {
-        const gx = Math.random() * 2048;
-        const gy = Math.random() * 256;
-        const gw = Math.random() * 40 + 10;
-        ctx.fillRect(gx, gy, gw, 1);
+      // Damascus folds
+      cCtx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      for (let i = 0; i < 2200; i++) {
+        cCtx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 50 + 10, 1);
       }
 
-      // 3. Dense Archaic Chinese Dragon & Seal Script Glyphs
-      const cellW = 64;
-      const cellH = 104;
-      const cols = 2048 / cellW;
+      // 2. Heightmap Canvas (For generating mathematical Normal Map)
+      const heightCanvas = document.createElement('canvas');
+      heightCanvas.width = W; heightCanvas.height = H;
+      const hCtx = heightCanvas.getContext('2d');
+      hCtx.fillStyle = '#000000';
+      hCtx.fillRect(0, 0, W, H);
 
-      function drawChiseledLine(x1, y1, x2, y2, w = 5) {
-        // Drop shadow (deep carved recess)
-        ctx.strokeStyle = '#080706';
-        ctx.lineWidth = w + 2;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x1 + 1.5, y1 + 1.5);
-        ctx.lineTo(x2 + 1.5, y2 + 1.5);
-        ctx.stroke();
+      // 3. Emissive Canvas (Molten Qi Fire Glow)
+      const emissiveCanvas = document.createElement('canvas');
+      emissiveCanvas.width = W; emissiveCanvas.height = H;
+      const eCtx = emissiveCanvas.getContext('2d');
+      eCtx.fillStyle = '#000000';
+      eCtx.fillRect(0, 0, W, H);
 
-        // Silver Damascus steel body
-        ctx.strokeStyle = '#b4bac6';
-        ctx.lineWidth = w;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
+      const cellW = 64, cellH = 104;
+      const cols = W / cellW;
 
-        // Specular highlight rim
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = Math.max(1.5, w * 0.35);
-        ctx.beginPath();
-        ctx.moveTo(x1 - 1, y1 - 1);
-        ctx.lineTo(x2 - 1, y2 - 1);
-        ctx.stroke();
+      function renderStroke(x1, y1, x2, y2, w) {
+        // Heightmap
+        hCtx.strokeStyle = '#ffffff';
+        hCtx.lineWidth = w;
+        hCtx.lineCap = 'round';
+        hCtx.beginPath();
+        hCtx.moveTo(x1, y1); hCtx.lineTo(x2, y2);
+        hCtx.stroke();
+
+        // Diffuse (Chiseled Silver Damascus)
+        cCtx.strokeStyle = '#080706';
+        cCtx.lineWidth = w + 2;
+        cCtx.beginPath();
+        cCtx.moveTo(x1 + 1.5, y1 + 1.5); cCtx.lineTo(x2 + 1.5, y2 + 1.5);
+        cCtx.stroke();
+
+        cCtx.strokeStyle = '#b8c0cc';
+        cCtx.lineWidth = w;
+        cCtx.beginPath();
+        cCtx.moveTo(x1, y1); cCtx.lineTo(x2, y2);
+        cCtx.stroke();
+
+        cCtx.strokeStyle = '#ffffff';
+        cCtx.lineWidth = Math.max(1.5, w * 0.35);
+        cCtx.beginPath();
+        cCtx.moveTo(x1 - 1, y1 - 1); cCtx.lineTo(x2 - 1, y2 - 1);
+        cCtx.stroke();
+
+        // Emissive (Molten Gold Glow)
+        eCtx.strokeStyle = '#ff9922';
+        eCtx.lineWidth = w * 0.75;
+        eCtx.beginPath();
+        eCtx.moveTo(x1, y1); eCtx.lineTo(x2, y2);
+        eCtx.stroke();
       }
 
-      function drawChiseledArc(cx, cy, r, sa, ea, w = 5) {
-        ctx.strokeStyle = '#080706';
-        ctx.lineWidth = w + 2;
-        ctx.beginPath();
-        ctx.arc(cx + 1.5, cy + 1.5, r, sa, ea);
-        ctx.stroke();
+      function renderArc(cx, cy, r, sa, ea, w) {
+        hCtx.strokeStyle = '#ffffff';
+        hCtx.lineWidth = w;
+        hCtx.beginPath();
+        hCtx.arc(cx, cy, r, sa, ea);
+        hCtx.stroke();
 
-        ctx.strokeStyle = '#b4bac6';
-        ctx.lineWidth = w;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, sa, ea);
-        ctx.stroke();
+        cCtx.strokeStyle = '#080706';
+        cCtx.lineWidth = w + 2;
+        cCtx.beginPath();
+        cCtx.arc(cx + 1.5, cy + 1.5, r, sa, ea);
+        cCtx.stroke();
 
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = Math.max(1.5, w * 0.35);
-        ctx.beginPath();
-        ctx.arc(cx - 1, cy - 1, r, sa, ea);
-        ctx.stroke();
+        cCtx.strokeStyle = '#b8c0cc';
+        cCtx.lineWidth = w;
+        cCtx.beginPath();
+        cCtx.arc(cx, cy, r, sa, ea);
+        cCtx.stroke();
+
+        cCtx.strokeStyle = '#ffffff';
+        cCtx.lineWidth = Math.max(1.5, w * 0.35);
+        cCtx.beginPath();
+        cCtx.arc(cx - 1, cy - 1, r, sa, ea);
+        cCtx.stroke();
+
+        eCtx.strokeStyle = '#ff9922';
+        eCtx.lineWidth = w * 0.75;
+        eCtx.beginPath();
+        eCtx.arc(cx, cy, r, sa, ea);
+        eCtx.stroke();
       }
 
-      // Draw 2 Dense Tiers of Archaic Seal Runes
+      // Draw 2 Tiers of Intricate Archaic Glyphs
       for (let rIdx = 0; rIdx < 2; rIdx++) {
         const yBase = rIdx === 0 ? 24 : 132;
         for (let c = 0; c < cols; c++) {
-          const x = c * cellW;
-          const y = yBase;
-          const w = cellW;
-          const h = cellH;
-          const glyphType = (c + rIdx * 3) % 6;
+          const x = c * cellW, y = yBase, w = cellW, h = cellH;
+          const glyph = (c + rIdx * 3) % 6;
 
-          if (glyphType === 0) {
-            // Coiled Dragon Spiral
-            drawChiseledArc(x + w * 0.5, y + h * 0.5, 20, 0.2, Math.PI * 1.85, 4.5);
-            drawChiseledArc(x + w * 0.5, y + h * 0.5, 10, Math.PI * 0.6, Math.PI * 2.2, 4);
-            drawChiseledLine(x + w * 0.5, y + h * 0.5, x + w - 8, y + h - 10, 4);
-          } else if (glyphType === 1) {
-            // Thunder / Flame Archaic Seal
-            drawChiseledLine(x + 8, y + 10, x + w - 8, y + 10, 4.5);
-            drawChiseledLine(x + w * 0.5, y + 10, x + w * 0.5, y + h - 10, 4.5);
-            drawChiseledLine(x + 10, y + h * 0.5, x + w - 10, y + h * 0.5, 4);
-            drawChiseledArc(x + w * 0.25, y + h * 0.65, 12, Math.PI * 0.5, Math.PI * 1.5, 4);
-            drawChiseledArc(x + w * 0.75, y + h * 0.65, 12, Math.PI * 1.5, Math.PI * 0.5, 4);
-          } else if (glyphType === 2) {
-            // Interlocking Geometric Leiwen Meander
-            drawChiseledLine(x + 8, y + 10, x + w - 8, y + 10, 4.5);
-            drawChiseledLine(x + w - 8, y + 10, x + w - 8, y + h - 10, 4.5);
-            drawChiseledLine(x + 14, y + h - 10, x + w - 8, y + h - 10, 4.5);
-            drawChiseledLine(x + 14, y + 26, x + 14, y + h - 10, 4.5);
-            drawChiseledLine(x + 14, y + 26, x + w - 22, y + 26, 4);
-            drawChiseledLine(x + w - 22, y + 26, x + w - 22, y + h - 22, 4);
-          } else if (glyphType === 3) {
-            // Mystic Dragon Knot
-            drawChiseledArc(x + w * 0.32, y + h * 0.5, 16, Math.PI * 0.8, Math.PI * 2.1, 4.5);
-            drawChiseledArc(x + w * 0.68, y + h * 0.5, 16, Math.PI * 0.9, Math.PI * 2.2, 4.5);
-            drawChiseledLine(x + w * 0.5, y + 14, x + w * 0.5, y + h - 12, 4.5);
-            drawChiseledLine(x + 12, y + h - 12, x + w - 12, y + h - 12, 4);
-          } else if (glyphType === 4) {
-            // Diamond Scale Talisman
-            const mx = x + w * 0.5, my = y + h * 0.5;
-            drawChiseledLine(mx, y + 10, x + w - 8, my, 4.5);
-            drawChiseledLine(x + w - 8, my, mx, y + h - 10, 4.5);
-            drawChiseledLine(mx, y + h - 10, x + 8, my, 4.5);
-            drawChiseledLine(x + 8, my, mx, y + 10, 4.5);
-            drawChiseledLine(x + 16, my, x + w - 16, my, 4);
+          if (glyph === 0) {
+            renderArc(x + w*0.5, y + h*0.5, 20, 0.2, Math.PI * 1.85, 4.5);
+            renderArc(x + w*0.5, y + h*0.5, 10, Math.PI * 0.6, Math.PI * 2.2, 4);
+            renderStroke(x + w*0.5, y + h*0.5, x + w - 8, y + h - 10, 4);
+          } else if (glyph === 1) {
+            renderStroke(x + 8, y + 10, x + w - 8, y + 10, 4.5);
+            renderStroke(x + w*0.5, y + 10, x + w*0.5, y + h - 10, 4.5);
+            renderStroke(x + 10, y + h*0.5, x + w - 10, y + h*0.5, 4);
+            renderArc(x + w*0.25, y + h*0.65, 12, Math.PI * 0.5, Math.PI * 1.5, 4);
+            renderArc(x + w*0.75, y + h*0.65, 12, Math.PI * 1.5, Math.PI * 0.5, 4);
+          } else if (glyph === 2) {
+            renderStroke(x + 8, y + 10, x + w - 8, y + 10, 4.5);
+            renderStroke(x + w - 8, y + 10, x + w - 8, y + h - 10, 4.5);
+            renderStroke(x + 14, y + h - 10, x + w - 8, y + h - 10, 4.5);
+            renderStroke(x + 14, y + 26, x + 14, y + h - 10, 4.5);
+            renderStroke(x + 14, y + 26, x + w - 22, y + 26, 4);
+            renderStroke(x + w - 22, y + 26, x + w - 22, y + h - 22, 4);
+          } else if (glyph === 3) {
+            renderArc(x + w*0.32, y + h*0.5, 16, Math.PI * 0.8, Math.PI * 2.1, 4.5);
+            renderArc(x + w*0.68, y + h*0.5, 16, Math.PI * 0.9, Math.PI * 2.2, 4.5);
+            renderStroke(x + w*0.5, y + 14, x + w*0.5, y + h - 12, 4.5);
+            renderStroke(x + 12, y + h - 12, x + w - 12, y + h - 12, 4);
+          } else if (glyph === 4) {
+            const mx = x + w*0.5, my = y + h*0.5;
+            renderStroke(mx, y + 10, x + w - 8, my, 4.5);
+            renderStroke(x + w - 8, my, mx, y + h - 10, 4.5);
+            renderStroke(mx, y + h - 10, x + 8, my, 4.5);
+            renderStroke(x + 8, my, mx, y + 10, 4.5);
+            renderStroke(x + 16, my, x + w - 16, my, 4);
           } else {
-            // Flowing Qi Cloud Spiral
-            drawChiseledArc(x + w * 0.5, y + h * 0.38, 16, Math.PI * 0.7, Math.PI * 2.0, 4.5);
-            drawChiseledArc(x + w * 0.5, y + h * 0.62, 16, 0, Math.PI * 1.3, 4.5);
-            drawChiseledLine(x + w * 0.5, y + 12, x + w * 0.5, y + h - 12, 4);
+            renderArc(x + w*0.5, y + h*0.38, 16, Math.PI * 0.7, Math.PI * 2.0, 4.5);
+            renderArc(x + w*0.5, y + h*0.62, 16, 0, Math.PI * 1.3, 4.5);
+            renderStroke(x + w*0.5, y + 12, x + w*0.5, y + h - 12, 4);
           }
         }
       }
 
-      // Dual Chiseled Border Rails
-      drawChiseledLine(0, 10, 2048, 10, 5.5);
-      drawChiseledLine(0, 246, 2048, 246, 5.5);
+      // Border Rails
+      renderStroke(0, 10, W, 10, 5.5);
+      renderStroke(0, H - 10, W, H - 10, 5.5);
 
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
-      tex.repeat.set(2, 1);
-      return tex;
+      // 4. Generate Tangent Normal Map from Heightmap
+      const normalCanvas = document.createElement('canvas');
+      normalCanvas.width = W; normalCanvas.height = H;
+      const nCtx = normalCanvas.getContext('2d');
+      const hData = hCtx.getImageData(0, 0, W, H).data;
+      const nImgData = nCtx.createImageData(W, H);
+      const nData = nImgData.data;
+
+      const bump = 4.5;
+      for (let y = 1; y < H - 1; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          const idx = (y * W + x) * 4;
+          const left = hData[(y * W + (x - 1)) * 4];
+          const right = hData[(y * W + (x + 1)) * 4];
+          const up = hData[((y - 1) * W + x) * 4];
+          const down = hData[((y + 1) * W + x) * 4];
+
+          const dx = (right - left) / 255.0 * bump;
+          const dy = (down - up) / 255.0 * bump;
+          const dz = 1.0;
+          const len = Math.hypot(dx, dy, dz);
+
+          nData[idx] = Math.floor((-dx / len * 0.5 + 0.5) * 255);
+          nData[idx + 1] = Math.floor((-dy / len * 0.5 + 0.5) * 255);
+          nData[idx + 2] = Math.floor((dz / len * 0.5 + 0.5) * 255);
+          nData[idx + 3] = 255;
+        }
+      }
+      nCtx.putImageData(nImgData, 0, 0);
+
+      const colorTex = new THREE.CanvasTexture(colorCanvas);
+      colorTex.wrapS = THREE.RepeatWrapping; colorTex.wrapT = THREE.ClampToEdgeWrapping;
+      colorTex.repeat.set(2, 1);
+
+      const normalTex = new THREE.CanvasTexture(normalCanvas);
+      normalTex.wrapS = THREE.RepeatWrapping; normalTex.wrapT = THREE.ClampToEdgeWrapping;
+      normalTex.repeat.set(2, 1);
+
+      const emissiveTex = new THREE.CanvasTexture(emissiveCanvas);
+      emissiveTex.wrapS = THREE.RepeatWrapping; emissiveTex.wrapT = THREE.ClampToEdgeWrapping;
+      emissiveTex.repeat.set(2, 1);
+
+      return { colorTex, normalTex, emissiveTex };
     }
 
-    const shangChiRuneTexture = generateShangChiRuneTexture();
+    const { colorTex: shangChiColorMap, normalTex: shangChiNormalMap, emissiveTex: shangChiEmissiveMap } = generateShangChiRuneMaps();
 
-    // 1. Heavy Forged Antique Copper Bronze PBR Material (Exact match to reference photo)
+    // 1. Heavy Forged Antique Copper Bronze PBR Material (Environment-Reflective)
     const matAntiqueCopper = new THREE.MeshStandardMaterial({
-      color: 0x9e4b2c, // Rich reddish antique brushed copper bronze
+      color: 0x9e4b2c,
       metalness: 0.96,
-      roughness: 0.22,
-      clearcoat: 0.50,
-      clearcoatRoughness: 0.16
+      roughness: 0.18,
+      clearcoat: 0.60,
+      clearcoatRoughness: 0.12,
+      envMapIntensity: 1.8
     });
 
-    // 2. Chiseled Silver Damascus Rune Inlay Material (Molten Qi Fire Emissive)
+    // 2. Chiseled Silver Damascus Rune Inlay Material (Relief Normal + Molten Emissive)
     const matRuneInlay = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      map: shangChiRuneTexture,
-      metalness: 0.88,
-      roughness: 0.30,
-      emissive: 0xff6600,
-      emissiveMap: shangChiRuneTexture,
-      emissiveIntensity: 2.5
+      map: shangChiColorMap,
+      normalMap: shangChiNormalMap,
+      normalScale: new THREE.Vector2(2.4, 2.4),
+      metalness: 0.90,
+      roughness: 0.26,
+      emissive: 0xff5500,
+      emissiveMap: shangChiEmissiveMap,
+      emissiveIntensity: 2.6,
+      envMapIntensity: 1.5
     });
 
     // 3. Internal Molten Core Plasma Tube Material
@@ -729,25 +894,26 @@
       blending: THREE.AdditiveBlending
     });
 
-    // Precision 13-Point Lathe Profile Function for Movie-Accurate Ring
+    // Precision 13-Point Lathe Profile Function for Authentic Marvel Prop Ring
+    // Exact proportions matched to reference photo (media_1793804872394_2c58a86b.jpg)
     function createShangChiRingGeometry() {
       // Cross-section profile coordinates: (radius r, height y along cylinder axis)
       const profile = [
-        new THREE.Vector2(0.78, -0.16),  // Inner sleeve bottom
-        new THREE.Vector2(0.78,  0.16),  // Inner sleeve top
-        new THREE.Vector2(0.83,  0.16),  // Inner chamfer bevel
-        new THREE.Vector2(0.95,  0.15),  // Side flat brushed rim
-        new THREE.Vector2(1.00,  0.11),  // Outer chamfer bevel
-        new THREE.Vector2(1.00,  0.06),  // Outer elevated rail top
-        new THREE.Vector2(0.918, 0.05),  // Step down into recessed rune channel
-        new THREE.Vector2(0.918,-0.05),  // Recessed rune channel floor
-        new THREE.Vector2(1.00, -0.06),  // Step up out of recessed rune channel
-        new THREE.Vector2(1.00, -0.11),  // Outer elevated rail bottom
-        new THREE.Vector2(0.95, -0.15),  // Outer chamfer bevel
-        new THREE.Vector2(0.83, -0.16),  // Side flat brushed rim
-        new THREE.Vector2(0.78, -0.16)   // Close loop at inner sleeve
+        new THREE.Vector2(0.76, -0.20),  // Inner sleeve comfort bottom
+        new THREE.Vector2(0.76,  0.20),  // Inner sleeve comfort top
+        new THREE.Vector2(0.81,  0.20),  // Inner rounded comfort chamfer
+        new THREE.Vector2(0.93,  0.19),  // Side flat brushed antique copper face
+        new THREE.Vector2(1.00,  0.14),  // Outer chamfer bevel
+        new THREE.Vector2(1.00,  0.08),  // Outer elevated rail top
+        new THREE.Vector2(0.915, 0.07),  // Step down into recessed rune channel
+        new THREE.Vector2(0.915,-0.07),  // Recessed rune channel floor
+        new THREE.Vector2(1.00, -0.08),  // Step up out of recessed rune channel
+        new THREE.Vector2(1.00, -0.14),  // Outer elevated rail bottom
+        new THREE.Vector2(0.93, -0.19),  // Outer chamfer bevel
+        new THREE.Vector2(0.81, -0.20),  // Side flat brushed antique copper face
+        new THREE.Vector2(0.76, -0.20)   // Close loop at inner sleeve
       ];
-      const geo = new THREE.LatheGeometry(profile, 72);
+      const geo = new THREE.LatheGeometry(profile, 84);
       geo.rotateX(Math.PI * 0.5); // Align ring normal with Z axis (0, 0, 1)
       geo.computeVertexNormals();
       return geo;
@@ -756,11 +922,11 @@
     const ringGroup = new THREE.Group();
     const tenRings = [];
 
-    // Shared Reusable Geometries
+    // Shared Reusable Geometries (Deep Channel + Raised Silver Damascus Inlay)
     const shangChiBodyGeo = createShangChiRingGeometry();
-    const shangChiRuneGeo = new THREE.CylinderGeometry(0.920, 0.920, 0.10, 72, 1, true);
+    const shangChiRuneGeo = new THREE.CylinderGeometry(0.920, 0.920, 0.14, 84, 1, true);
     shangChiRuneGeo.rotateX(Math.PI * 0.5);
-    const shangChiPlasmaGeo = new THREE.TorusGeometry(0.920, 0.020, 16, 48);
+    const shangChiPlasmaGeo = new THREE.TorusGeometry(0.920, 0.024, 20, 60);
 
     // Construct 10 Movie-Accurate Precision Arm Rings
     for (let i = 0; i < 10; i++) {
@@ -791,6 +957,32 @@
       tenRings.push(ringObj);
     }
     scene.add(ringGroup);
+
+    // -------------------------------------------------------------------------
+    // MASTER MOVIE PROP 3D INSPECTION CHAMBER
+    // -------------------------------------------------------------------------
+    const inspectRingGroup = new THREE.Group();
+    inspectRingGroup.visible = false;
+    
+    // Large, ultra-detailed prop ring in viewport center
+    const inspectScale = 165.0;
+    const inspectBodyMesh = new THREE.Mesh(shangChiBodyGeo, matAntiqueCopper);
+    const inspectRuneMesh = new THREE.Mesh(shangChiRuneGeo, matRuneInlay);
+    const inspectPlasmaMesh = new THREE.Mesh(shangChiPlasmaGeo, matRingPlasmaCore);
+
+    inspectRingGroup.add(inspectBodyMesh);
+    inspectRingGroup.add(inspectRuneMesh);
+    inspectRingGroup.add(inspectPlasmaMesh);
+    inspectRingGroup.scale.set(inspectScale, inspectScale, inspectScale);
+    inspectRingGroup.position.set(200, -10, 80);
+    // Initial 3/4 beauty angle matching reference photo (media_1793804872394_2c58a86b.jpg)
+    inspectRingGroup.rotation.set(0.36, -0.72, -0.22);
+    scene.add(inspectRingGroup);
+
+    let isPropInspectActive = false;
+    let isInspectDragging = false;
+    let prevInspectMouse = { x: 0, y: 0 };
+    let inspectZoom = 1.0;
 
     // -------------------------------------------------------------------------
     // SHANG-CHI MOVIE GESTURES & KINEMATICS ENGINE
@@ -1494,7 +1686,8 @@
     let lastFpsTime = performance.now();
 
     function renderLoop() {
-      requestAnimationFrame(renderLoop);
+      if (window.location.search.includes('inspect')) togglePropInspector(true);
+    requestAnimationFrame(renderLoop);
       timeVal += 0.035;
       frameCount++;
       const now = performance.now();
@@ -1852,16 +2045,31 @@
           const dz = (arm.wrist.z || 0) - (arm.elbow.z || 0);
           const armLen = Math.hypot(dx, dy) || 1;
           const armLen3D = Math.hypot(dx, dy, dz) || 1;
-          const armDir = new THREE.Vector3(dx / armLen3D, dy / armLen3D, dz / armLen3D);
 
-          // Vector along palm/fingers for sliding over hand
+          // Authentic Shang-Chi Kung Fu 3D Ring Orientation:
+          // In martial arts, forearms naturally angle forward 35-45 degrees towards the camera.
+          // By giving the ring normal an intentional forward Z component, the rings are NEVER viewed edge-on
+          // as flat slits — the circular opening, brushed antique copper bevels, and recessed silver Damascus runes
+          // are always visible in rich three-dimensional volume!
+          const forwardPitch = 0.62;
+          const armDir3D = new THREE.Vector3(
+            (dx / armLen) * 0.72,
+            (dy / armLen) * 0.72,
+            forwardPitch
+          ).normalize();
+
+          // Hand vector for entering fingertips & sliding over palm
           const hdx = arm.index.x - arm.wrist.x;
           const hdy = arm.wrist.y - arm.index.y;
           const handLen = Math.hypot(hdx, hdy) || 40;
-          const handDir = new THREE.Vector3(hdx / handLen, hdy / handLen, 0);
+          const handDir3D = new THREE.Vector3(
+            (hdx / handLen) * 0.75,
+            (hdy / handLen) * 0.75,
+            0.65
+          ).normalize();
 
           // Movie-Accurate Anatomical Arm Sizing & Proportions
-          const ringRad = Math.max(42, armLen * 0.26);
+          const ringRad = Math.max(44, armLen * 0.27);
 
           for (let k = 0; k < 5; k++) {
             const ringIdx = arm.offset + k;
@@ -1879,7 +2087,7 @@
             let curY = targetSlotY;
             let curZ = 16;
             let curScale = ringRad * taperScale;
-            let curDir = armDir.clone();
+            let curDir = armDir3D.clone();
 
             // -----------------------------------------------------------------
             // A. CINEMATIC SEQUENTIAL HAND-ENTRY ANIMATION (VISIBLE ON SCREEN)
@@ -1889,54 +2097,57 @@
               const duration = 0.26;
 
               if (ringsState.summonProgress < triggerTime) {
-                // Hovering in an energetic golden halo directly in front of user
-                const orbitAngle = timeVal * 2.5 + ringIdx * 0.65;
-                const orbitRadius = 140 + k * 16;
-                curX = arm.wrist.x + Math.cos(orbitAngle) * orbitRadius * arm.sign;
-                curY = arm.wrist.y - 110 + Math.sin(orbitAngle) * 45;
-                curZ = 40 + Math.sin(orbitAngle * 2) * 25;
-                curScale = ringRad * 1.25;
-                curDir.set(Math.cos(orbitAngle) * 0.5, Math.sin(orbitAngle) * 0.5, 0.8).normalize();
+                // Phase 0: Hovering in an energetic golden constellation directly in front of chest/shoulder
+                // Positioned below top HUD so rings are 100% visible
+                const haloAngle = timeVal * 2.2 + ringIdx * 0.628;
+                const haloRadius = 75 + k * 18;
+                curX = arm.wrist.x + arm.sign * haloRadius + Math.cos(haloAngle) * 28;
+                curY = arm.wrist.y + 35 + Math.sin(haloAngle) * 25;
+                curZ = 55 + Math.sin(haloAngle * 2) * 18;
+                curScale = ringRad * 1.22;
+                // Facing directly forward toward camera with subtle hypnotic gyroscopic precession
+                curDir.set(Math.sin(haloAngle) * 0.20, Math.cos(haloAngle) * 0.20, 0.96).normalize();
               } else if (ringsState.summonProgress < triggerTime + duration) {
-                // VISIBLY SLIDING OVER THE HAND (Fingertips -> Palm -> Wrist -> Forearm Slot)
+                // VISIBLY SLIDING OVER THE HAND (Fingertips -> Palm/Knuckles -> Wrist -> Forearm Slot)
                 const u = (ringsState.summonProgress - triggerTime) / duration;
                 const easeU = Math.min(1.0, Math.max(0.0, 1.0 - Math.pow(1.0 - u, 2.2)));
 
-                if (easeU < 0.35) {
-                  // Phase 1: Descending from halo to Fingertips
-                  const subU = easeU / 0.35;
-                  const startX = arm.wrist.x + arm.sign * 160;
-                  const startY = arm.wrist.y - 160;
+                if (easeU < 0.32) {
+                  // Phase 1: Swooping from constellation down to Fingertips
+                  const subU = easeU / 0.32;
+                  const startX = arm.wrist.x + arm.sign * (75 + k * 18);
+                  const startY = arm.wrist.y + 35;
                   curX = startX + (arm.index.x - startX) * subU;
                   curY = startY + (arm.index.y - startY) * subU;
-                  curZ = 50 * (1.0 - subU) + 20;
-                  curScale = ringRad * (1.30 - subU * 0.12);
-                  curDir.set(armDir.x * 0.7, armDir.y * 0.7, 0.4).normalize();
+                  curZ = 55 * (1.0 - subU) + 26;
+                  curScale = ringRad * (1.28 - subU * 0.08);
+                  curDir.set(handDir3D.x * 0.8, handDir3D.y * 0.8, 0.75).normalize();
                 } else if (easeU < 0.72) {
-                  // Phase 2: SLIDING OVER THE PALM & KNUCKLES
-                  const subU = (easeU - 0.35) / 0.37;
+                  // Phase 2: SLIDING OVER THE PALM & KNUCKLES (Ring expands to pass over hand)
+                  const subU = (easeU - 0.32) / 0.40;
                   curX = arm.index.x + (arm.wrist.x - arm.index.x) * subU;
                   curY = arm.index.y + (arm.wrist.y - arm.index.y) * subU;
-                  curZ = 22;
-                  // Expands by 18% so it visibly slides OVER the hand
-                  curScale = ringRad * (1.18 + Math.sin(subU * Math.PI) * 0.18);
-                  curDir.copy(armDir);
+                  curZ = 26;
+                  // Expands by 22% so it visibly slides OVER the hand
+                  curScale = ringRad * (1.20 + Math.sin(subU * Math.PI) * 0.22);
+                  curDir.copy(handDir3D);
                 } else {
                   // Phase 3: Sliding down forearm from wrist to target resting slot
                   const subU = (easeU - 0.72) / 0.28;
                   curX = arm.wrist.x + (targetSlotX - arm.wrist.x) * subU;
                   curY = arm.wrist.y + (targetSlotY - arm.wrist.y) * subU;
-                  curZ = 16;
-                  curScale = ringRad;
-                  curDir.copy(armDir);
+                  curZ = 20;
+                  // Smoothly tapering down to forearm fit
+                  curScale = ringRad * (1.20 * (1.0 - subU) + taperScale * subU);
+                  curDir.copy(armDir3D);
                 }
               } else {
-                // Reached Forearm Slot -> THE LOCKING MOMENT
+                // Phase 4: Reached Forearm Slot -> THE LOCKING MOMENT
                 curX = targetSlotX;
                 curY = targetSlotY;
                 curZ = 16;
-                curScale = ringRad;
-                curDir.copy(armDir);
+                curScale = ringRad * taperScale;
+                curDir.copy(armDir3D);
 
                 if (!ringsState.ringLockedFlags[ringIdx]) {
                   ringsState.ringLockedFlags[ringIdx] = true;
@@ -1954,7 +2165,7 @@
               curY = shieldMidY + Math.sin(shieldAngle) * shieldRadius;
               curZ = 35 + Math.sin(shieldAngle * 3) * 20;
               curScale = ringRad * 1.15;
-              curDir.set(Math.cos(shieldAngle), Math.sin(shieldAngle), 0).normalize();
+              curDir.set(Math.cos(shieldAngle) * 0.22, Math.sin(shieldAngle) * 0.22, 0.94).normalize();
             } else if (arm.strike.active) {
               // ---------------------------------------------------------------
               // C. TEN RINGS CANNON / WHIP PROJECTILE STRIKE
@@ -2115,10 +2326,124 @@
       // Update Procedural Audio Modulation
       updateAudioSFX();
 
+      // Handle 3D Prop Inspector Rendering
+      if (isPropInspectActive) {
+        inspectRingGroup.visible = true;
+        ringGroup.visible = false;
+        if (!isInspectDragging) {
+          inspectRingGroup.rotation.y += 0.0065;
+          inspectRingGroup.rotation.x += 0.002 * Math.sin(timeVal * 1.4);
+        }
+        inspectRingGroup.scale.set(inspectScale * inspectZoom, inspectScale * inspectZoom, inspectScale * inspectZoom);
+      } else {
+        inspectRingGroup.visible = false;
+        ringGroup.visible = (activeStance === 'SHANG_CHI' || manualOverride === 'SHANG_CHI' || manualOverride === 'OMNI_OVERDRIVE');
+      }
+
       // Render 3D Scene
       renderer.render(scene, camera);
     }
 
+
+    // -------------------------------------------------------------------------
+    // 3D MOVIE PROP INSPECTOR INTERACTION ENGINE
+    // -------------------------------------------------------------------------
+    function togglePropInspector(forcedState) {
+      isPropInspectActive = (forcedState !== undefined) ? forcedState : !isPropInspectActive;
+      const modal = document.getElementById('propInspectModal');
+      const btn = document.getElementById('btnInspectProp');
+      if (isPropInspectActive) {
+        if (modal) modal.style.display = 'flex';
+        if (btn) {
+          btn.innerText = '🔍 3D PROP: ACTIVE';
+          btn.style.background = 'rgba(234, 179, 8, 0.45)';
+          btn.style.borderColor = '#facc15';
+        }
+        inspectRingGroup.position.set(200, -10, 80); inspectRingGroup.rotation.set(0.36, -0.72, -0.22);
+        inspectZoom = 1.0;
+        playRingClangSFX(1.2);
+      } else {
+        if (modal) modal.style.display = 'none';
+        if (btn) {
+          btn.innerText = '🔍 3D PROP INSPECT';
+          btn.style.background = 'rgba(245, 158, 11, 0.25)';
+          btn.style.borderColor = 'rgba(245, 158, 11, 0.85)';
+        }
+      }
+    }
+
+    const btnInspectProp = document.getElementById('btnInspectProp');
+    if (btnInspectProp) {
+      btnInspectProp.addEventListener('click', () => togglePropInspector());
+    }
+
+    const btnModalClose = document.getElementById('btnModalCloseInspect');
+    if (btnModalClose) {
+      btnModalClose.addEventListener('click', () => togglePropInspector(false));
+    }
+
+    const btnModalToggleQi = document.getElementById('btnModalToggleQi');
+    if (btnModalToggleQi) {
+      btnModalToggleQi.addEventListener('click', () => ringsState.toggleMode());
+    }
+
+    const btnModalResetCam = document.getElementById('btnModalResetCam');
+    if (btnModalResetCam) {
+      btnModalResetCam.addEventListener('click', () => {
+        inspectRingGroup.position.set(200, -10, 80); inspectRingGroup.rotation.set(0.36, -0.72, -0.22);
+        inspectZoom = 1.0;
+      });
+    }
+
+    const btnModalReplayEntry = document.getElementById('btnModalReplayEntry');
+    if (btnModalReplayEntry) {
+      btnModalReplayEntry.addEventListener('click', () => {
+        togglePropInspector(false);
+        ringsState.triggerSummon();
+      });
+    }
+
+    // Mouse & Touch 360-degree rotation listeners
+    window.addEventListener('mousedown', (e) => {
+      if (!isPropInspectActive) return;
+      if (e.target.closest('#propInspectModal .hud-dock') || e.target.closest('.hud-header') || e.target.closest('button')) return;
+      isInspectDragging = true;
+      prevInspectMouse = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPropInspectActive || !isInspectDragging) return;
+      const dx = e.clientX - prevInspectMouse.x;
+      const dy = e.clientY - prevInspectMouse.y;
+      inspectRingGroup.rotation.y += dx * 0.009;
+      inspectRingGroup.rotation.x += dy * 0.009;
+      prevInspectMouse = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mouseup', () => { isInspectDragging = false; });
+
+    window.addEventListener('wheel', (e) => {
+      if (!isPropInspectActive) return;
+      inspectZoom = Math.min(2.4, Math.max(0.45, inspectZoom - e.deltaY * 0.0012));
+    }, { passive: true });
+
+    window.addEventListener('touchstart', (e) => {
+      if (!isPropInspectActive || e.touches.length !== 1) return;
+      if (e.target.closest('button')) return;
+      isInspectDragging = true;
+      prevInspectMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isPropInspectActive || !isInspectDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - prevInspectMouse.x;
+      const dy = e.touches[0].clientY - prevInspectMouse.y;
+      inspectRingGroup.rotation.y += dx * 0.009;
+      inspectRingGroup.rotation.x += dy * 0.009;
+      prevInspectMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    });
+
+    window.addEventListener('touchend', () => { isInspectDragging = false; });
 
     // Connect Shang-Chi Movie Control Buttons
     const btnSummonRings = document.getElementById('btnSummonRings');
@@ -2135,12 +2460,16 @@
       });
     }
 
-    // Keyboard Shortcut 'R' for Ring Summon Gesture
+    // Keyboard Shortcuts: R for Ring Summon, T for Qi Mode, I for 3D Prop Inspect, ESC to close
     window.addEventListener('keydown', (e) => {
       if (e.key === 'r' || e.key === 'R') {
         ringsState.triggerSummon();
       } else if (e.key === 't' || e.key === 'T') {
         ringsState.toggleMode();
+      } else if (e.key === 'i' || e.key === 'I') {
+        togglePropInspector();
+      } else if (e.key === 'Escape') {
+        if (typeof isPropInspectActive !== 'undefined' && isPropInspectActive) togglePropInspector(false);
       }
     });
 
