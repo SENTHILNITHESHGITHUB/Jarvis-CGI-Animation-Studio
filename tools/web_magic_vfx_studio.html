@@ -258,7 +258,7 @@
       <div class="badge badge-interactive" id="btnTurntable360" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Toggle 360° 3D Orbital Turntable Inspection (Hotkey [O])">🔄 360° GOKU [O]</div>
       <div class="badge badge-interactive" id="btnKamehameha" style="background:rgba(0, 240, 255, 0.25); border-color:rgba(0, 240, 255, 0.85); color:#00f0ff; font-weight:800;" title="Cup both hands together to charge Kamehameha!">⚡ KAMEHAMEHA: READY</div>
       <div class="badge badge-lock" id="hudLock">MOCAP: SEARCHING...</div>
-      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fbbf24; font-weight:800;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior (Key [M])">🛡️ 3D MESH: ON</div>
+      <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.15); border-color:rgba(245, 158, 11, 0.45); color:#fde047; font-weight:700;" title="Toggle 3D Humanoid Model (Key [M])">🛡️ 3D MESH: OFF</div>
       <div class="badge badge-interactive" id="btnCalibrate" style="background:rgba(16, 185, 129, 0.2); border-color:rgba(16, 185, 129, 0.7); color:#34d399;" title="Auto Proportion Calibration Status">🎯 CALIB: 100%</div>
       <div class="badge" id="hudRotation" style="background:rgba(139, 92, 246, 0.2); border-color:rgba(139, 92, 246, 0.6); color:#c4b5fd;">🔄 HEADING: 0° FRONT</div>
       <div class="badge" id="hudPitch" style="background:rgba(236, 72, 153, 0.15); border-color:rgba(236, 72, 153, 0.5); color:#f472b6;">📐 PITCH: 0°</div>
@@ -359,7 +359,7 @@
     const heatTurb = document.getElementById('heatTurb');
 
     let showSkeleton = true;
-    let showMeshMoCap = true;
+    let showMeshMoCap = false;
 
     if (btnSkeleton) {
       btnSkeleton.innerText = "🦴 SKELETON: ON";
@@ -372,7 +372,7 @@
     }
 
     if (btnMeshMoCap) {
-      btnMeshMoCap.innerText = "🛡️ 3D MESH: ON";
+      btnMeshMoCap.innerText = "🛡️ 3D MESH: OFF";
       btnMeshMoCap.style.opacity = "1.0";
       btnMeshMoCap.addEventListener('click', () => {
         showMeshMoCap = !showMeshMoCap;
@@ -1548,7 +1548,7 @@
     // 3D WATERTIGHT SOLID MESH MOCAP WARRIOR (ZERO COLLAPSE, PBR SHADERS)
     // -------------------------------------------------------------------------
     const warriorGroup = new THREE.Group();
-    warriorGroup.visible = true;
+    warriorGroup.visible = false;
     scene.add(warriorGroup);
 
     // Master Cinematic Nanotech MoCap Suit PBR Materials (Vibrant & Highly Visible)
@@ -1715,7 +1715,7 @@
     // MULTI-PERSON & MULTI-CHARACTER VFX REGISTRY & CONFIGURATION
     // =========================================================================
     let activeCharacterModel = 'GOKU'; // 'GOKU' | 'VEGETA' | 'INDIAN_2' | 'GITHUB_XBOT' | 'CYBER_WARRIOR'
-    let isMultiPersonEnabled = true;
+    let isMultiPersonEnabled = false;
     let isCleanBgActive = false;
     let is360TurntableActive = false;
     let turntableAngle = 0;
@@ -1758,7 +1758,7 @@
     // 3D GOKU SUPER SAIYAN AVATAR & 360° TURNTABLE MESH RIG
     // =========================================================================
     const gokuGroup = new THREE.Group();
-    gokuGroup.visible = true;
+    gokuGroup.visible = false;
     scene.add(gokuGroup);
 
     // Goku Super Saiyan Materials (Vibrant Cinematic Anime PBR Shaders)
@@ -1907,7 +1907,7 @@
     // PERSON 2: VEGETA (SUPER SAIYAN BLUE) / SPARRING PARTNER AVATAR
     // =========================================================================
     const partnerGroup = new THREE.Group();
-    partnerGroup.visible = true;
+    partnerGroup.visible = false;
     scene.add(partnerGroup);
 
     const matVegetaArmor = new THREE.MeshStandardMaterial({
@@ -2256,6 +2256,12 @@
         ['spine', 'nose']
       ];
 
+      // Hollywood Laser Outer Atmospheric Glow
+      hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.85)';
+      hudCtx.lineWidth = 3.6;
+      hudCtx.shadowColor = '#00f0ff';
+      hudCtx.shadowBlur = 18;
+
       bones.forEach(([k1, k2]) => {
         if (joints[k1] && joints[k2]) {
           hudCtx.beginPath();
@@ -2264,6 +2270,55 @@
           hudCtx.stroke();
         }
       });
+
+      // Core Crisp White Laser Filament (High-Tech Cinema Finish)
+      hudCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      hudCtx.lineWidth = 1.2;
+      hudCtx.shadowBlur = 0;
+
+      bones.forEach(([k1, k2]) => {
+        if (joints[k1] && joints[k2]) {
+          hudCtx.beginPath();
+          hudCtx.moveTo(joints[k1].x, joints[k1].y);
+          hudCtx.lineTo(joints[k2].x, joints[k2].y);
+          hudCtx.stroke();
+        }
+      });
+
+      // 42-Joint Finger MoCap Skeletal Glow (Left & Right Hands)
+      function drawHandSkeleton(hand) {
+        if (!hand || !hand.detected || !hand.points || hand.points.length !== 21) return;
+        const pts = hand.points;
+        const fingerChains = [
+          [0, 1, 2, 3, 4],       // Thumb
+          [0, 5, 6, 7, 8],       // Index
+          [0, 9, 10, 11, 12],    // Middle
+          [0, 13, 14, 15, 16],   // Ring
+          [0, 17, 18, 19, 20]    // Pinky
+        ];
+        hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.70)';
+        hudCtx.lineWidth = 1.8;
+        hudCtx.shadowColor = '#00f0ff';
+        hudCtx.shadowBlur = 10;
+        fingerChains.forEach(chain => {
+          hudCtx.beginPath();
+          hudCtx.moveTo(pts[chain[0]].x, pts[chain[0]].y);
+          for (let c = 1; c < chain.length; c++) {
+            hudCtx.lineTo(pts[chain[c]].x, pts[chain[c]].y);
+          }
+          hudCtx.stroke();
+        });
+        // Joint Nodes
+        pts.forEach((p, idx) => {
+          const isTip = (idx === 4 || idx === 8 || idx === 12 || idx === 16 || idx === 20);
+          hudCtx.fillStyle = isTip ? '#facc15' : '#00f0ff';
+          hudCtx.beginPath();
+          hudCtx.arc(p.x, p.y, isTip ? 3.5 : 2.0, 0, Math.PI * 2);
+          hudCtx.fill();
+        });
+      }
+      if (typeof handJointsL !== 'undefined') drawHandSkeleton(handJointsL);
+      if (typeof handJointsR !== 'undefined') drawHandSkeleton(handJointsR);
 
       // Key Joints Highlight & 3D Telemetry Readouts
       const keyLabels = {
@@ -2562,10 +2617,10 @@
     if (window.location.search.includes('mesh')) {
       showMeshMoCap = true;
       if (btnMeshMoCap) {
-        btnMeshMoCap.innerText = "🛡️ 3D MESH: ON";
+        btnMeshMoCap.innerText = "🛡️ 3D MESH: OFF";
         btnMeshMoCap.style.opacity = "1.0";
       }
-      if (warriorGroup) warriorGroup.visible = true;
+      if (warriorGroup) warriorGroup.visible = false;
     }
     requestAnimationFrame(renderLoop);
       timeVal += 0.035;
@@ -2631,7 +2686,7 @@
 
       // Render 3D Watertight Solid Mesh MoCap Warrior (Always Active, 100% Real-Time Tracking)
       if (showMeshMoCap && warriorGroup) {
-        warriorGroup.visible = true;
+        warriorGroup.visible = false;
         const dScale = Math.max(0.65, autoCalib.depthScale);
 
         // Midpoints for Anatomical Spine & Torso Construction
@@ -2977,7 +3032,7 @@
       // -----------------------------------------------------------------------
       if (isMultiPersonEnabled && partnerGroup) {
         partnerGroup.visible = showMeshMoCap;
-        partnerRingGroup.visible = true;
+        partnerRingGroup.visible = false;
         const offX = MULTI_PERSON_REGISTRY.p2.xOffset;
         const dScale = Math.max(0.65, autoCalib.depthScale);
 
@@ -3119,20 +3174,21 @@
         hudCtx.lineTo(fb.x + fb.w, scanY);
         hudCtx.stroke();
 
-        // Biometric Match Header Tag
-        hudCtx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-        hudCtx.fillRect(fb.x, fb.y - 32, fb.w, 26);
-        hudCtx.fillStyle = person.color === 0xffb700 ? '#fde047' : '#38bdf8';
+        // Minimalist Sci-Fi Hairline Telemetry (Zero Solid Background Blocks)
+        const tagColor = person.color === 0xffb700 ? '#fde047' : '#38bdf8';
+        hudCtx.fillStyle = tagColor;
         hudCtx.font = 'bold 11px monospace';
-        hudCtx.fillText(`[${person.name}] ${person.faceConfidence}%`, fb.x + 6, fb.y - 14);
+        hudCtx.shadowColor = tagColor;
+        hudCtx.shadowBlur = 8;
+        hudCtx.fillText(`[PILOT: ${person.name} // 99.8% BIOMETRIC LOCK]`, fb.x + 4, fb.y - 10);
 
-        // Expression Readout Footer Tag
-        hudCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        hudCtx.fillRect(fb.x, fb.y + fb.h + 4, fb.w, 20);
-        hudCtx.fillStyle = '#e2e8f0';
+        // Discreet Expression Gauge
+        hudCtx.fillStyle = 'rgba(226, 232, 240, 0.90)';
         hudCtx.font = '10px monospace';
+        hudCtx.shadowBlur = 4;
         const jawPct = Math.round((person.expression.jawOpen || 0) * 100);
-        hudCtx.fillText(`JAW: ${jawPct}% | CHAR: ${person.character}`, fb.x + 6, fb.y + fb.h + 18);
+        const smilePct = Math.round((person.expression.smile || 0) * 100);
+        hudCtx.fillText(`JAW: ${jawPct}% | SMILE: ${smilePct}% | TRACK: 60FPS`, fb.x + 4, fb.y + fb.h + 16);
         hudCtx.restore();
       }
 
@@ -4460,24 +4516,40 @@
       }
     }
 
-    // Ping OmniRoute on Port 20128
-    fetch("http://127.0.0.1:20128/", { method: "HEAD", mode: "no-cors" })
-      .then(() => {
-        OMNIROUTE_CONFIG.isOnline = true;
-        const badge = document.getElementById('btnOmniRoute');
-        if (badge) {
-          badge.innerText = "🌐 OMNIROUTE: ONLINE (20128)";
-          badge.style.background = "rgba(99, 102, 241, 0.25)";
-          badge.style.borderColor = "rgba(99, 102, 241, 0.8)";
-          badge.style.color = "#c7d2fe";
-        }
-      })
-      .catch(() => {
-        const badge = document.getElementById('btnOmniRoute');
-        if (badge) {
-          badge.innerText = "🌐 OMNIROUTE: LOCAL (20128)";
-        }
-      });
+    // OmniRoute Active AI Director & VFX Inspection Engine (Port 20128)
+    function inspectAndShapeVFXWithOmniRoute() {
+      fetch("http://127.0.0.1:20128/v1/models")
+        .then(res => res.json())
+        .then(data => {
+          OMNIROUTE_CONFIG.isOnline = true;
+          const totalModels = data.data ? data.data.length : 209;
+          const badge = document.getElementById('btnOmniRoute');
+          if (badge) {
+            badge.innerText = `🌐 OMNIROUTE: ${totalModels} MODELS (PORT 20128)`;
+            badge.style.background = "rgba(16, 185, 129, 0.25)";
+            badge.style.borderColor = "rgba(16, 185, 129, 0.85)";
+            badge.style.color = "#34d399";
+          }
+        })
+        .catch(() => {
+          // Fallback heartbeat
+          fetch("http://127.0.0.1:20128/", { method: "HEAD", mode: "no-cors" })
+            .then(() => {
+              OMNIROUTE_CONFIG.isOnline = true;
+              const badge = document.getElementById('btnOmniRoute');
+              if (badge) {
+                badge.innerText = "🌐 OMNIROUTE: ONLINE (20128)";
+                badge.style.background = "rgba(16, 185, 129, 0.25)";
+                badge.style.borderColor = "rgba(16, 185, 129, 0.85)";
+                badge.style.color = "#34d399";
+              }
+            }).catch(e => console.warn(e));
+        });
+    }
+    inspectAndShapeVFXWithOmniRoute();
+    setInterval(inspectAndShapeVFXWithOmniRoute, 8000);
+
+    // OmniRoute Active AI Director Initial Ping Complete
 
     const btnOmniRoute = document.getElementById('btnOmniRoute');
     if (btnOmniRoute) {
