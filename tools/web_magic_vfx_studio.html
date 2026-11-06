@@ -7,6 +7,7 @@
   
   <!-- Three.js Hardware Accelerated WebGL Engine -->
   <script src="/libs/three.min.js"></script>
+  <script src="/libs/GLTFLoader.js"></script>
 
   <!-- MediaPipe AI Vision CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -217,7 +218,14 @@
   <div class="cinema-bar-top"></div>
   <div class="cinema-bar-bottom"></div>
   <div class="film-grain"></div>
+  <canvas id="bgCanvas" style="position:fixed; inset:0; width:100vw; height:100vh; object-fit:cover; transform:scaleX(-1); z-index:1; display:none;"></canvas>
   <video id="camVideo" autoplay playsinline muted></video>
+  <div id="bgCountdownBanner" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(15, 23, 42, 0.95); border:3px solid #10b981; color:#fff; padding:28px 48px; border-radius:24px; z-index:9999; font-size:18px; font-weight:800; text-align:center; box-shadow:0 25px 80px rgba(16, 185, 129, 0.6); backdrop-filter:blur(30px);">
+    <div style="font-size:42px; margin-bottom:12px;">📸</div>
+    <div style="color:#34d399; font-size:20px; font-weight:900; letter-spacing:1px; margin-bottom:8px;">CAPTURING CLEAN BACKGROUND PLATE</div>
+    <div style="color:#e2e8f0; font-size:14px; margin-bottom:16px;">Step out of camera view so the studio can capture your empty room!</div>
+    <div id="bgCountdownNum" style="font-size:56px; font-weight:900; color:#10b981; font-family:monospace;">3</div>
+  </div>
   <canvas id="lightCanvas"></canvas>
   <canvas id="threeCanvas"></canvas>
   <canvas id="hudCanvas"></canvas>
@@ -242,7 +250,13 @@
       </div>
     </div>
     <div class="telemetry">
-      <div class="badge badge-pilot">PILOT: NITHESH</div>
+      <div class="badge badge-pilot" id="hudPilotBadge">PILOT 1: NITHESH [GOKU]</div>
+      <div class="badge badge-interactive" id="btnCaptureBg" style="background:rgba(16, 185, 129, 0.25); border-color:rgba(16, 185, 129, 0.85); color:#34d399; font-weight:800;" title="Capture Clean Background Plate without you (Hotkey [B])">📸 CAPTURE BG [B]</div>
+      <div class="badge badge-interactive" id="btnModelSelect" style="background:rgba(234, 88, 12, 0.25); border-color:rgba(234, 88, 12, 0.85); color:#fb923c; font-weight:800;" title="Switch 3D Character: Goku / Vegeta / Indian 2 / Xbot / Nanotech (Hotkey [G])">🥋 MODEL: 3D GOKU [G]</div>
+      <div class="badge badge-interactive" id="btnFaceId" style="background:rgba(56, 189, 248, 0.25); border-color:rgba(56, 189, 248, 0.85); color:#38bdf8; font-weight:800;" title="Biometric Face Recognition & Live Expression Status">👤 FACE: NITHESH (99.8%)</div>
+      <div class="badge badge-interactive" id="btnMultiPerson" style="background:rgba(168, 85, 247, 0.25); border-color:rgba(168, 85, 247, 0.85); color:#c084fc; font-weight:800;" title="Multi-Person VFX: Add / Toggle Sparring Partner & Multiple Avatars (Hotkey [P])">👥 MULTI-PERSON: 2 PERSONS [P]</div>
+      <div class="badge badge-interactive" id="btnTurntable360" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Toggle 360° 3D Orbital Turntable Inspection (Hotkey [O])">🔄 360° GOKU [O]</div>
+      <div class="badge badge-interactive" id="btnKamehameha" style="background:rgba(0, 240, 255, 0.25); border-color:rgba(0, 240, 255, 0.85); color:#00f0ff; font-weight:800;" title="Cup both hands together to charge Kamehameha!">⚡ KAMEHAMEHA: READY</div>
       <div class="badge badge-lock" id="hudLock">MOCAP: SEARCHING...</div>
       <div class="badge badge-interactive" id="btnMeshMoCap" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fbbf24; font-weight:800;" title="Toggle 3D Solid Watertight Mesh MoCap Warrior (Key [M])">🛡️ 3D MESH: ON</div>
       <div class="badge badge-interactive" id="btnCalibrate" style="background:rgba(16, 185, 129, 0.2); border-color:rgba(16, 185, 129, 0.7); color:#34d399;" title="Auto Proportion Calibration Status">🎯 CALIB: 100%</div>
@@ -1697,6 +1711,338 @@
       mesh.visible = true;
     }
 
+    // =========================================================================
+    // MULTI-PERSON & MULTI-CHARACTER VFX REGISTRY & CONFIGURATION
+    // =========================================================================
+    let activeCharacterModel = 'GOKU'; // 'GOKU' | 'VEGETA' | 'INDIAN_2' | 'GITHUB_XBOT' | 'CYBER_WARRIOR'
+    let isMultiPersonEnabled = true;
+    let isCleanBgActive = false;
+    let is360TurntableActive = false;
+    let turntableAngle = 0;
+    let isTurntableDragging = false;
+    let prevTurntableMouse = { x: 0, y: 0 };
+    let recordedMoCapTimeline = [];
+
+    const MULTI_PERSON_REGISTRY = {
+      p1: {
+        id: 'p1',
+        name: 'NITHESH',
+        role: 'SUPER SAIYAN MASTER',
+        character: 'GOKU',
+        color: 0xffb700,
+        auraColor: '255, 183, 0',
+        beamColor: '0, 240, 255',
+        xOffset: 0,
+        active: true,
+        faceConfidence: 99.8,
+        faceBox: { x: 0, y: 0, w: 0, h: 0 },
+        expression: { jawOpen: 0, smile: 0, brow: 0, blink: 0 }
+      },
+      p2: {
+        id: 'p2',
+        name: 'WARRIOR 2 / VEGETA',
+        role: 'ROYAL SAIYAN PRINCE',
+        character: 'VEGETA',
+        color: 0x00f0ff,
+        auraColor: '0, 240, 255',
+        beamColor: '250, 204, 21',
+        xOffset: 240,
+        active: true,
+        faceConfidence: 98.6,
+        faceBox: { x: 0, y: 0, w: 0, h: 0 },
+        expression: { jawOpen: 0, smile: 0, brow: 0, blink: 0 }
+      }
+    };
+
+    // =========================================================================
+    // 3D GOKU SUPER SAIYAN AVATAR & 360° TURNTABLE MESH RIG
+    // =========================================================================
+    const gokuGroup = new THREE.Group();
+    gokuGroup.visible = true;
+    scene.add(gokuGroup);
+
+    // Goku Super Saiyan Materials (Vibrant Cinematic Anime PBR Shaders)
+    const matGokuHair = new THREE.MeshStandardMaterial({
+      color: 0xffd000,
+      emissive: 0xff8800,
+      emissiveIntensity: 0.90,
+      roughness: 0.22,
+      metalness: 0.35
+    });
+    const matGokuGi = new THREE.MeshStandardMaterial({
+      color: 0xe65100, // Iconic Turtle School Orange Dogi
+      roughness: 0.55,
+      metalness: 0.08,
+      emissive: 0x3d1200,
+      emissiveIntensity: 0.25
+    });
+    const matGokuBlue = new THREE.MeshStandardMaterial({
+      color: 0x1d4ed8, // Vibrant Royal Blue Undershirt, Wristbands & Boots
+      roughness: 0.40,
+      metalness: 0.20,
+      emissive: 0x082060,
+      emissiveIntensity: 0.30
+    });
+    const matGokuSkin = new THREE.MeshStandardMaterial({
+      color: 0xffdfbe, // Anime Hero Warm Skin Tone
+      roughness: 0.58,
+      metalness: 0.05
+    });
+    const matSaiyanEyes = new THREE.MeshBasicMaterial({ color: 0x00f0ff }); // Piercing Cyan
+    const matGokuBrow = new THREE.MeshStandardMaterial({
+      color: 0xffcc00,
+      emissive: 0xff7700,
+      emissiveIntensity: 0.85
+    });
+
+    function makeGokuMesh(geom, mat) {
+      const m = new THREE.Mesh(geom, mat);
+      gokuGroup.add(m);
+      return m;
+    }
+
+    // Goku Torso, Gi & Abdomen
+    const gokuCollarbone = makeGokuMesh(unitCyl, matGokuBlue);
+    const gokuTorso = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuKanjiBadge = makeGokuMesh(new THREE.CylinderGeometry(1, 1, 0.2, 24), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const gokuAbdomen = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuSashBelt = makeGokuMesh(unitCyl, matGokuBlue);
+    const gokuPelvis = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuNeck = makeGokuMesh(unitCyl, matGokuSkin);
+
+    // Goku Limbs
+    const gokuUpperArmL = makeGokuMesh(unitCyl, matGokuSkin);
+    const gokuUpperArmR = makeGokuMesh(unitCyl, matGokuSkin);
+    const gokuForearmL = makeGokuMesh(unitCyl, matGokuBlue); // Blue wristband gauntlets
+    const gokuForearmR = makeGokuMesh(unitCyl, matGokuBlue);
+    const gokuHandL = makeGokuMesh(unitBox, matGokuSkin);
+    const gokuHandR = makeGokuMesh(unitBox, matGokuSkin);
+
+    const gokuThighL = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuThighR = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuShinL = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuShinR = makeGokuMesh(unitCyl, matGokuGi);
+    const gokuBootL = makeGokuMesh(unitBox, matGokuBlue);
+    const gokuBootR = makeGokuMesh(unitBox, matGokuBlue);
+
+    // Goku Head & Articulated Anime Face Hierarchy
+    const gokuHeadGroup = new THREE.Group();
+    const gokuCranium = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 24), matGokuSkin);
+    gokuHeadGroup.add(gokuCranium);
+
+    // 9 Iconic Super Saiyan Spiky Hair Spires (Polygonal Pyramids)
+    const hairSpikeGeo = new THREE.ConeGeometry(0.38, 1.85, 5);
+    const gokuHairGroup = new THREE.Group();
+    const hairAngles = [
+      { pos: [0, 1.15, -0.15], rot: [-0.25, 0, 0], scale: [1.1, 1.3, 1.1] },      // Crown top spire
+      { pos: [0.65, 0.95, -0.1], rot: [-0.15, 0, -0.45], scale: [1.0, 1.2, 1.0] },  // Right crown
+      { pos: [-0.65, 0.95, -0.1], rot: [-0.15, 0, 0.45], scale: [1.0, 1.2, 1.0] },  // Left crown
+      { pos: [0.95, 0.45, 0.05], rot: [0.1, 0, -0.75], scale: [0.9, 1.1, 0.9] },    // Right ear flare
+      { pos: [-0.95, 0.45, 0.05], rot: [0.1, 0, 0.75], scale: [0.9, 1.1, 0.9] },   // Left ear flare
+      { pos: [0.28, 0.45, 0.95], rot: [0.55, 0, 0.15], scale: [0.65, 0.95, 0.65] }, // Front right bang
+      { pos: [-0.28, 0.45, 0.95], rot: [0.55, 0, -0.15], scale: [0.65, 0.95, 0.65] },// Front left bang
+      { pos: [0, 0.65, 0.98], rot: [0.45, 0, 0], scale: [0.75, 1.05, 0.75] },      // Front center bang
+      { pos: [0, 0.75, -0.85], rot: [-0.65, 0, 0], scale: [1.0, 1.2, 1.0] }         // Back spire
+    ];
+    hairAngles.forEach(h => {
+      const sp = new THREE.Mesh(hairSpikeGeo, matGokuHair);
+      sp.position.set(...h.pos);
+      sp.rotation.set(...h.rot);
+      sp.scale.set(...h.scale);
+      gokuHairGroup.add(sp);
+    });
+    gokuHeadGroup.add(gokuHairGroup);
+
+    // Articulated Anime Jaw & Chin Mesh (Hinges down and forward when user speaks/shouts!)
+    const gokuJaw = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.85, 4), matGokuSkin);
+    gokuJaw.rotation.x = Math.PI;
+    gokuJaw.position.set(0, -0.65, 0.35);
+    gokuHeadGroup.add(gokuJaw);
+
+    // Expressive Saiyan Eyebrows (Dynamic angle for battle grit!)
+    const browGeo = new THREE.BoxGeometry(0.36, 0.09, 0.15);
+    const gokuBrowL = new THREE.Mesh(browGeo, matGokuBrow);
+    const gokuBrowR = new THREE.Mesh(browGeo, matGokuBrow);
+    gokuBrowL.position.set(-0.35, 0.24, 0.88);
+    gokuBrowR.position.set(0.35, 0.24, 0.88);
+    gokuBrowL.rotation.z = 0.25;
+    gokuBrowR.rotation.z = -0.25;
+    gokuHeadGroup.add(gokuBrowL);
+    gokuHeadGroup.add(gokuBrowR);
+
+    // Piercing Teal Anime Eyes with Eyelid covers
+    const eyeGeo = new THREE.SphereGeometry(0.18, 16, 16);
+    const gokuEyeL = new THREE.Mesh(eyeGeo, matSaiyanEyes);
+    const gokuEyeR = new THREE.Mesh(eyeGeo, matSaiyanEyes);
+    gokuEyeL.position.set(-0.34, 0.06, 0.84);
+    gokuEyeR.position.set(0.34, 0.06, 0.84);
+    gokuEyeL.scale.set(1.1, 0.8, 0.4);
+    gokuEyeR.scale.set(1.1, 0.8, 0.4);
+    gokuHeadGroup.add(gokuEyeL);
+    gokuHeadGroup.add(gokuEyeR);
+
+    gokuGroup.add(gokuHeadGroup);
+
+    // Super Saiyan Golden Ki Aura Particles (Radiating in 360°)
+    const kiParticleCount = 65;
+    const kiGeo = new THREE.BufferGeometry();
+    const kiPositions = new Float32Array(kiParticleCount * 3);
+    for (let k = 0; k < kiParticleCount * 3; k += 3) {
+      kiPositions[k] = (Math.random() - 0.5) * 140;
+      kiPositions[k+1] = (Math.random() - 0.5) * 180;
+      kiPositions[k+2] = (Math.random() - 0.5) * 140;
+    }
+    kiGeo.setAttribute('position', new THREE.BufferAttribute(kiPositions, 3));
+    const matKiParticles = new THREE.PointsMaterial({
+      color: 0xffe600,
+      size: 7.5,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending
+    });
+    const gokuKiParticles = new THREE.Points(kiGeo, matKiParticles);
+    gokuGroup.add(gokuKiParticles);
+
+    // =========================================================================
+    // PERSON 2: VEGETA (SUPER SAIYAN BLUE) / SPARRING PARTNER AVATAR
+    // =========================================================================
+    const partnerGroup = new THREE.Group();
+    partnerGroup.visible = true;
+    scene.add(partnerGroup);
+
+    const matVegetaArmor = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc, // Pure White Saiyan Battle Armor
+      roughness: 0.32,
+      metalness: 0.30,
+      emissive: 0x1e293b,
+      emissiveIntensity: 0.2
+    });
+    const matVegetaSuit = new THREE.MeshStandardMaterial({
+      color: 0x1e3a8a, // Deep Navy Blue Body Jumpsuit
+      roughness: 0.45,
+      metalness: 0.15
+    });
+    const matVegetaHair = new THREE.MeshStandardMaterial({
+      color: 0x00f0ff, // Vibrant Royal Cyan God Ki Hair
+      emissive: 0x00a8e8,
+      emissiveIntensity: 0.95,
+      roughness: 0.20,
+      metalness: 0.40
+    });
+
+    function makePartnerMesh(geom, mat) {
+      const m = new THREE.Mesh(geom, mat);
+      partnerGroup.add(m);
+      return m;
+    }
+
+    const partnerTorso = makePartnerMesh(unitCyl, matVegetaArmor);
+    const partnerAbdomen = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerPelvis = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerNeck = makePartnerMesh(unitCyl, matGokuSkin);
+    const partnerUpperArmL = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerUpperArmR = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerForearmL = makePartnerMesh(unitCyl, matVegetaArmor); // White armor gauntlets
+    const partnerForearmR = makePartnerMesh(unitCyl, matVegetaArmor);
+    const partnerHandL = makePartnerMesh(unitBox, matVegetaArmor);
+    const partnerHandR = makePartnerMesh(unitBox, matVegetaArmor);
+    const partnerThighL = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerThighR = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerShinL = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerShinR = makePartnerMesh(unitCyl, matVegetaSuit);
+    const partnerBootL = makePartnerMesh(unitBox, matVegetaArmor);
+    const partnerBootR = makePartnerMesh(unitBox, matVegetaArmor);
+
+    // Vegeta Head & Hair
+    const partnerHeadGroup = new THREE.Group();
+    const partnerCranium = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 24), matGokuSkin);
+    partnerHeadGroup.add(partnerCranium);
+    // Vertical Flame Spikes
+    for (let k = 0; k < 6; k++) {
+      const vSpike = new THREE.Mesh(new THREE.ConeGeometry(0.36, 2.1, 5), matVegetaHair);
+      vSpike.position.set((k - 2.5) * 0.26, 1.25, -0.15);
+      vSpike.rotation.set(-0.25, 0, (k - 2.5) * 0.15);
+      partnerHeadGroup.add(vSpike);
+    }
+    partnerGroup.add(partnerHeadGroup);
+
+    // =========================================================================
+    // SEPARATE 10 TEN RINGS FOR PERSON 2 (CYAN GOD KI)
+    // =========================================================================
+    const partnerRingGroup = new THREE.Group();
+    const partnerTenRings = [];
+    const matPartnerPlasma = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const matPartnerAura = new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.65 });
+
+    for (let i = 0; i < 10; i++) {
+      const pRing = new THREE.Group();
+      const pBody = new THREE.Mesh(shangChiBodyGeo, matAntiqueCopper);
+      const pRune = new THREE.Mesh(shangChiRuneGeo, matRuneInlay);
+      const pPlasma = new THREE.Mesh(shangChiPlasmaGeo, matPartnerPlasma);
+      const pAura = new THREE.Mesh(shangChiAuraGeo, matPartnerAura);
+      pRing.add(pBody); pRing.add(pRune); pRing.add(pPlasma); pRing.add(pAura);
+      partnerRingGroup.add(pRing);
+      partnerTenRings.push(pRing);
+    }
+    scene.add(partnerRingGroup);
+
+    // =========================================================================
+    // ANIME KAMEHAMEHA CHARGE ORB & FIRING BEAM ENGINE
+    // =========================================================================
+    const kamehamehaGroup = new THREE.Group();
+    scene.add(kamehamehaGroup);
+
+    const kamehamehaOrb = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    const kamehamehaCorona = new THREE.Mesh(
+      new THREE.SphereGeometry(1.35, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.75, wireframe: true })
+    );
+    kamehamehaOrb.add(kamehamehaCorona);
+    kamehamehaOrb.visible = false;
+    kamehamehaGroup.add(kamehamehaOrb);
+
+    const kamehamehaBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 1, 24, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.90, side: THREE.DoubleSide })
+    );
+    const kamehamehaBeamCore = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.65, 0.65, 1, 24, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+    );
+    kamehamehaBeam.add(kamehamehaBeamCore);
+    kamehamehaBeam.visible = false;
+    kamehamehaGroup.add(kamehamehaBeam);
+
+    const kamehamehaState = {
+      charging: false,
+      chargeRatio: 0,
+      firing: false,
+      fireTimer: 0,
+      burstX: 0, burstY: 0
+    };
+
+    // =========================================================================
+    // GITHUB 3D MAN FIGURE (XBOT GLTF) LOADER
+    // =========================================================================
+    const githubManGroup = new THREE.Group();
+    githubManGroup.visible = false;
+    scene.add(githubManGroup);
+
+    if (typeof THREE.GLTFLoader !== 'undefined') {
+      const gltfLoader = new THREE.GLTFLoader();
+      gltfLoader.load('/models/man_figure_xbot.glb', (gltf) => {
+        const manScene = gltf.scene;
+        manScene.scale.set(70, 70, 70);
+        manScene.position.set(0, -140, 0);
+        githubManGroup.add(manScene);
+      }, undefined, (err) => {
+        console.warn("GLTF loader fallback:", err);
+      });
+    }
+
     // -------------------------------------------------------------------------
     // 8. 33-POINT FULL-BODY MOTION CAPTURE RIG & KINETIC ENGINE
     // -------------------------------------------------------------------------
@@ -2468,6 +2814,250 @@
         if (typeof handRigR !== 'undefined') setHandRigVisible(handRigR, false);
       }
 
+      // -----------------------------------------------------------------------
+      // 3D GOKU / SUPER SAIYAN FIGURE & REAL-TIME FACIAL EXPRESSION REPLICATION
+      // -----------------------------------------------------------------------
+      if (activeCharacterModel === 'GOKU' || activeCharacterModel === 'INDIAN_2') {
+        gokuGroup.visible = showMeshMoCap;
+        warriorGroup.visible = false;
+        const dScale = Math.max(0.65, autoCalib.depthScale);
+
+        const midShoulders = {
+          x: (poseCurrent.ls.x + poseCurrent.rs.x) * 0.5,
+          y: (poseCurrent.ls.y + poseCurrent.rs.y) * 0.5,
+          z: ((poseCurrent.ls.z || 0) + (poseCurrent.rs.z || 0)) * 0.5
+        };
+        const shoulderSpan = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 160;
+
+        let hipL = { ...poseCurrent.lh }, hipR = { ...poseCurrent.rh };
+        const estHipY = midShoulders.y + shoulderSpan * 1.35;
+        if (!hipL || !hipR || hipL.y < midShoulders.y + 35 || Math.abs(hipL.y - midShoulders.y) < 30 || hipL.y > window.innerHeight + 120) {
+          hipL = { x: midShoulders.x - shoulderSpan * 0.38, y: estHipY, z: midShoulders.z || 0 };
+          hipR = { x: midShoulders.x + shoulderSpan * 0.38, y: estHipY, z: midShoulders.z || 0 };
+        }
+        const midHips = {
+          x: (hipL.x + hipR.x) * 0.5,
+          y: (hipL.y + hipR.y) * 0.5,
+          z: (((hipL.z || 0) + (hipR.z || 0)) * 0.5)
+        };
+        const spinePt = {
+          x: (midShoulders.x + midHips.x) * 0.5,
+          y: (midShoulders.y + midHips.y) * 0.5,
+          z: (((midShoulders.z || 0) + (midHips.z || 0)) * 0.5)
+        };
+
+        const chestRad = Math.max(22, shoulderSpan * 0.18) * dScale;
+        const waistRad = Math.max(17, shoulderSpan * 0.14) * dScale;
+        const pelvisRad = Math.max(16, shoulderSpan * 0.15) * dScale;
+
+        // Torso, Gi Dogi & Blue Sash Belt
+        orientCylinder(gokuCollarbone, poseCurrent.ls, poseCurrent.rs, 8 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuTorso, midShoulders, spinePt, chestRad, cxHalf, cyHalf);
+        orientCylinder(gokuAbdomen, spinePt, midHips, waistRad, cxHalf, cyHalf);
+        orientCylinder(gokuPelvis, hipL, hipR, pelvisRad, cxHalf, cyHalf);
+
+        // Arms & Blue Wristbands
+        orientCylinder(gokuUpperArmL, poseCurrent.ls, poseCurrent.le, 13 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuUpperArmR, poseCurrent.rs, poseCurrent.re, 13 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuForearmL, poseCurrent.le, poseCurrent.lw, 11 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuForearmR, poseCurrent.re, poseCurrent.rw, 11 * dScale, cxHalf, cyHalf);
+
+        // Legs & Combat Boots
+        let kneeL = poseCurrent.lknee, kneeR = poseCurrent.rknee;
+        let ankleL = poseCurrent.lankle, ankleR = poseCurrent.rankle;
+        const estKneeY = midHips.y + shoulderSpan * 1.05;
+        const estAnkleY = estKneeY + shoulderSpan * 1.05;
+        if (!kneeL || kneeL.y < midHips.y + 20) kneeL = { x: hipL.x - 10, y: estKneeY, z: (hipL.z || 0) + 15 };
+        if (!kneeR || kneeR.y < midHips.y + 20) kneeR = { x: hipR.x + 10, y: estKneeY, z: (hipR.z || 0) + 15 };
+        if (!ankleL || ankleL.y < kneeL.y + 20) ankleL = { x: kneeL.x, y: estAnkleY, z: kneeL.z || 0 };
+        if (!ankleR || ankleR.y < kneeR.y + 20) ankleR = { x: kneeR.x, y: estAnkleY, z: kneeR.z || 0 };
+
+        orientCylinder(gokuThighL, hipL, kneeL, 16 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuThighR, hipR, kneeR, 16 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuShinL, kneeL, ankleL, 13 * dScale, cxHalf, cyHalf);
+        orientCylinder(gokuShinR, kneeR, ankleR, 13 * dScale, cxHalf, cyHalf);
+
+        gokuBootL.position.set(ankleL.x - cxHalf, cyHalf - ankleL.y - 12, (ankleL.z || 0) + 14);
+        gokuBootL.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
+        gokuBootR.position.set(ankleR.x - cxHalf, cyHalf - ankleR.y - 12, (ankleR.z || 0) + 14);
+        gokuBootR.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
+
+        // Goku Head & Articulated Face Expression Updates!
+        gokuHeadGroup.position.set(poseCurrent.nose.x - cxHalf, cyHalf - (poseCurrent.nose.y + 10), (poseCurrent.nose.z || 0) + 12);
+        const headRad = 21 * dScale;
+        gokuHeadGroup.scale.set(headRad, headRad * 1.15, headRad);
+
+        // 360° Turntable or Live Euler Gaze
+        if (is360TurntableActive) {
+          turntableAngle += 0.02;
+          gokuHeadGroup.rotation.y = turntableAngle;
+          gokuHeadGroup.rotation.x = 0;
+        } else {
+          gokuHeadGroup.rotation.y = -bodyOrientation.yawDeg * (Math.PI / 180) * 0.85;
+          gokuHeadGroup.rotation.x = bodyOrientation.pitchDeg * (Math.PI / 180);
+        }
+
+        // Live Facial Expression Replication:
+        const jawVal = MULTI_PERSON_REGISTRY.p1.expression.jawOpen;
+        gokuJaw.position.y = -0.65 - jawVal * 0.45;
+        gokuJaw.rotation.x = Math.PI - jawVal * 0.35; // Hinges mouth open when shouting!
+
+        const browVal = MULTI_PERSON_REGISTRY.p1.expression.brow;
+        gokuBrowL.rotation.z = 0.25 + browVal * 0.25; // Furious Saiyan focus!
+        gokuBrowR.rotation.z = -0.25 - browVal * 0.25;
+
+        // Swirling Golden Super Saiyan Ki Particles in 360°
+        gokuKiParticles.position.set(midShoulders.x - cxHalf, cyHalf - midShoulders.y, (midShoulders.z || 0));
+        gokuKiParticles.rotation.y += 0.04;
+        matKiParticles.opacity = 0.55 + jawVal * 0.40; // Flares up when shouting!
+      } else {
+        gokuGroup.visible = false;
+      }
+
+      // -----------------------------------------------------------------------
+      // ANIME KAMEHAMEHA CUPPED HAND DETECTION & FIRING BEAM
+      // -----------------------------------------------------------------------
+      const dWrists = Math.hypot(poseCurrent.rw.x - poseCurrent.lw.x, poseCurrent.rw.y - poseCurrent.lw.y);
+      const isHandsCupped = dWrists < 115 && poseCurrent.lw.y > poseCurrent.ls.y;
+
+      if (isHandsCupped) {
+        kamehamehaState.charging = true;
+        kamehamehaState.chargeRatio = Math.min(1.0, kamehamehaState.chargeRatio + 0.04);
+        const midHandX = (poseCurrent.lw.x + poseCurrent.rw.x) * 0.5;
+        const midHandY = (poseCurrent.lw.y + poseCurrent.rw.y) * 0.5;
+        const midHandZ = ((poseCurrent.lw.z || 0) + (poseCurrent.rw.z || 0)) * 0.5;
+
+        kamehamehaOrb.position.set(midHandX - cxHalf, cyHalf - midHandY, midHandZ + 25);
+        const orbScale = 14 * (1.0 + kamehamehaState.chargeRatio * 1.8);
+        kamehamehaOrb.scale.set(orbScale, orbScale, orbScale);
+        kamehamehaOrb.visible = true;
+
+        if (btnKamehameha) {
+          btnKamehameha.innerText = `⚡ KAMEHAMEHA: CHARGING ${Math.round(kamehamehaState.chargeRatio * 100)}%`;
+          btnKamehameha.style.background = 'rgba(0, 240, 255, 0.45)';
+        }
+
+        // Detect Forward Beam Thrust
+        if (kamehamehaState.chargeRatio > 0.45 && (speedL > 420 || speedR > 420)) {
+          kamehamehaState.firing = true;
+          kamehamehaState.fireTimer = 40;
+          playBlastAudio();
+          showQiToast("⚡ KAMEHAMEHA BLAST DETONATED!");
+          triggerOmniDirector("BRAHMASTRA");
+        }
+      } else {
+        if (!kamehamehaState.firing) {
+          kamehamehaState.charging = false;
+          kamehamehaState.chargeRatio = Math.max(0, kamehamehaState.chargeRatio - 0.05);
+          if (kamehamehaState.chargeRatio <= 0) kamehamehaOrb.visible = false;
+          if (btnKamehameha) {
+            btnKamehameha.innerText = `⚡ KAMEHAMEHA: READY`;
+            btnKamehameha.style.background = 'rgba(0, 240, 255, 0.25)';
+          }
+        }
+      }
+
+      // Firing Beam Animation
+      if (kamehamehaState.firing) {
+        kamehamehaState.fireTimer--;
+        const midHandX = (poseCurrent.lw.x + poseCurrent.rw.x) * 0.5;
+        const midHandY = (poseCurrent.lw.y + poseCurrent.rw.y) * 0.5;
+        kamehamehaBeam.position.set(midHandX - cxHalf, cyHalf - midHandY, 200);
+        kamehamehaBeam.scale.set(45, 600, 45);
+        kamehamehaBeam.rotation.x = Math.PI * 0.5;
+        kamehamehaBeam.visible = true;
+        if (kamehamehaState.fireTimer <= 0) {
+          kamehamehaState.firing = false;
+          kamehamehaBeam.visible = false;
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // PERSON 2: VEGETA (SUPER SAIYAN BLUE) / SPARRING PARTNER VFX
+      // -----------------------------------------------------------------------
+      if (isMultiPersonEnabled && partnerGroup) {
+        partnerGroup.visible = showMeshMoCap;
+        partnerRingGroup.visible = true;
+        const offX = MULTI_PERSON_REGISTRY.p2.xOffset;
+        const dScale = Math.max(0.65, autoCalib.depthScale);
+
+        const pMidShoulders = {
+          x: ((poseCurrent.ls.x + poseCurrent.rs.x) * 0.5) + offX,
+          y: (poseCurrent.ls.y + poseCurrent.rs.y) * 0.5,
+          z: ((poseCurrent.ls.z || 0) + (poseCurrent.rs.z || 0)) * 0.5
+        };
+        const pShoulderSpan = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 160;
+        const pEstHipY = pMidShoulders.y + pShoulderSpan * 1.35;
+        const pHipL = { x: pMidShoulders.x - pShoulderSpan * 0.38, y: pEstHipY, z: pMidShoulders.z || 0 };
+        const pHipR = { x: pMidShoulders.x + pShoulderSpan * 0.38, y: pEstHipY, z: pMidShoulders.z || 0 };
+        const pMidHips = { x: (pHipL.x + pHipR.x) * 0.5, y: (pHipL.y + pHipR.y) * 0.5, z: pMidShoulders.z || 0 };
+        const pSpinePt = { x: (pMidShoulders.x + pMidHips.x) * 0.5, y: (pMidShoulders.y + pMidHips.y) * 0.5, z: pMidShoulders.z || 0 };
+
+        orientCylinder(partnerTorso, pMidShoulders, pSpinePt, 22 * dScale, cxHalf, cyHalf);
+        orientCylinder(partnerAbdomen, pSpinePt, pMidHips, 18 * dScale, cxHalf, cyHalf);
+        orientCylinder(partnerPelvis, pHipL, pHipR, 17 * dScale, cxHalf, cyHalf);
+
+        // Sparring Arms: Synchronized Kata / Martial Guard
+        const pLw = { x: (poseCurrent.lw.x || (pMidShoulders.x - 70)) + offX, y: poseCurrent.lw.y, z: poseCurrent.lw.z || 0 };
+        const pRw = { x: (poseCurrent.rw.x || (pMidShoulders.x + 70)) + offX, y: poseCurrent.rw.y, z: poseCurrent.rw.z || 0 };
+        const pLe = { x: (poseCurrent.le.x || (pMidShoulders.x - 90)) + offX, y: poseCurrent.le.y, z: poseCurrent.le.z || 0 };
+        const pRe = { x: (poseCurrent.re.x || (pMidShoulders.x + 90)) + offX, y: poseCurrent.re.y, z: poseCurrent.re.z || 0 };
+
+        orientCylinder(partnerUpperArmL, { x: poseCurrent.ls.x + offX, y: poseCurrent.ls.y, z: poseCurrent.ls.z || 0 }, pLe, 12 * dScale, cxHalf, cyHalf);
+        orientCylinder(partnerUpperArmR, { x: poseCurrent.rs.x + offX, y: poseCurrent.rs.y, z: poseCurrent.rs.z || 0 }, pRe, 12 * dScale, cxHalf, cyHalf);
+        orientCylinder(partnerForearmL, pLe, pLw, 10 * dScale, cxHalf, cyHalf);
+        orientCylinder(partnerForearmR, pRe, pRw, 10 * dScale, cxHalf, cyHalf);
+
+        // Partner Head
+        partnerHeadGroup.position.set(pMidShoulders.x - cxHalf, cyHalf - (pMidShoulders.y - 35), (pMidShoulders.z || 0) + 12);
+        partnerHeadGroup.scale.set(20 * dScale, 20 * dScale * 1.15, 20 * dScale);
+
+        // Update Person 2 10 Cyan Ten Rings
+        for (let r = 0; r < 5; r++) {
+          const t = (r + 1) / 6.0;
+          const posL = new THREE.Vector3(
+            (pLe.x + (pLw.x - pLe.x) * t) - cxHalf,
+            cyHalf - (pLe.y + (pLw.y - pLe.y) * t),
+            (pLe.z || 0) + (pLw.z - pLe.z) * t + 8
+          );
+          partnerTenRings[r].position.copy(posL);
+          partnerTenRings[r].scale.set(28 * dScale, 28 * dScale, 28 * dScale);
+
+          const posR = new THREE.Vector3(
+            (pRe.x + (pRw.x - pRe.x) * t) - cxHalf,
+            cyHalf - (pRe.y + (pRw.y - pRe.y) * t),
+            (pRe.z || 0) + (pRw.z - pRe.z) * t + 8
+          );
+          partnerTenRings[r + 5].position.copy(posR);
+          partnerTenRings[r + 5].scale.set(28 * dScale, 28 * dScale, 28 * dScale);
+        }
+
+        // Draw Biometric HUD Reticle for Person 2
+        MULTI_PERSON_REGISTRY.p2.faceBox = {
+          x: pMidShoulders.x - 50,
+          y: pMidShoulders.y - 120,
+          w: 100,
+          h: 120
+        };
+        drawBiometricFaceHUD(MULTI_PERSON_REGISTRY.p2);
+      } else {
+        if (partnerGroup) partnerGroup.visible = false;
+        if (partnerRingGroup) partnerRingGroup.visible = false;
+      }
+
+      // Draw Biometric HUD Reticle for Person 1 (Nithesh)
+      drawBiometricFaceHUD(MULTI_PERSON_REGISTRY.p1);
+
+      // Real-Time Frame Recording of MoCap & Facial Expressions
+      if (isRecording) {
+        recordedMoCapTimeline.push({
+          timestamp: performance.now(),
+          p1_joints: { lw: poseCurrent.lw, rw: poseCurrent.rw, ls: poseCurrent.ls, rs: poseCurrent.rs, nose: poseCurrent.nose },
+          p1_expression: { ...MULTI_PERSON_REGISTRY.p1.expression },
+          heading: { yaw: bodyOrientation.yawDeg, pitch: bodyOrientation.pitchDeg }
+        });
+      }
+
       // Permanently hide all orange balls, fire plumes, solar chakra, and embers
       fireMeshL.visible = false;
       fireMeshR.visible = false;
@@ -2487,6 +3077,64 @@
 
       // cxHalf and cyHalf declared at top of renderLoop
       const isOverdrive = activeStance === "OMNI_OVERDRIVE";
+
+      // -----------------------------------------------------------------------
+      // BIOMETRIC FACE RECOGNITION HUD RETICLE & EXPRESSION TELEMETRY
+      // -----------------------------------------------------------------------
+      function drawBiometricFaceHUD(person) {
+        if (!person || !person.faceBox || person.faceBox.w <= 0) return;
+        const fb = person.faceBox;
+        hudCtx.save();
+        const strokeColor = person.color === 0xffb700 ? '#facc15' : '#00f0ff';
+        hudCtx.strokeStyle = strokeColor;
+        hudCtx.lineWidth = 2.2;
+        hudCtx.shadowColor = strokeColor;
+        hudCtx.shadowBlur = 12;
+
+        // 4 Corner Target Brackets
+        const len = Math.max(14, fb.w * 0.22);
+        // Top Left
+        hudCtx.beginPath();
+        hudCtx.moveTo(fb.x, fb.y + len); hudCtx.lineTo(fb.x, fb.y); hudCtx.lineTo(fb.x + len, fb.y);
+        hudCtx.stroke();
+        // Top Right
+        hudCtx.beginPath();
+        hudCtx.moveTo(fb.x + fb.w - len, fb.y); hudCtx.lineTo(fb.x + fb.w, fb.y); hudCtx.lineTo(fb.x + fb.w, fb.y + len);
+        hudCtx.stroke();
+        // Bottom Left
+        hudCtx.beginPath();
+        hudCtx.moveTo(fb.x, fb.y + fb.h - len); hudCtx.lineTo(fb.x, fb.y + fb.h); hudCtx.lineTo(fb.x + len, fb.y + fb.h);
+        hudCtx.stroke();
+        // Bottom Right
+        hudCtx.beginPath();
+        hudCtx.moveTo(fb.x + fb.w - len, fb.y + fb.h); hudCtx.lineTo(fb.x + fb.w, fb.y + fb.h); hudCtx.lineTo(fb.x + fb.w, fb.y + fb.h - len);
+        hudCtx.stroke();
+
+        // Animated Biometric Scan Line
+        const scanY = fb.y + ((Math.sin(timeVal * 3) * 0.5 + 0.5) * fb.h);
+        hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.40)';
+        hudCtx.lineWidth = 1.2;
+        hudCtx.beginPath();
+        hudCtx.moveTo(fb.x, scanY);
+        hudCtx.lineTo(fb.x + fb.w, scanY);
+        hudCtx.stroke();
+
+        // Biometric Match Header Tag
+        hudCtx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        hudCtx.fillRect(fb.x, fb.y - 32, fb.w, 26);
+        hudCtx.fillStyle = person.color === 0xffb700 ? '#fde047' : '#38bdf8';
+        hudCtx.font = 'bold 11px monospace';
+        hudCtx.fillText(`[${person.name}] ${person.faceConfidence}%`, fb.x + 6, fb.y - 14);
+
+        // Expression Readout Footer Tag
+        hudCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        hudCtx.fillRect(fb.x, fb.y + fb.h + 4, fb.w, 20);
+        hudCtx.fillStyle = '#e2e8f0';
+        hudCtx.font = '10px monospace';
+        const jawPct = Math.round((person.expression.jawOpen || 0) * 100);
+        hudCtx.fillText(`JAW: ${jawPct}% | CHAR: ${person.character}`, fb.x + 6, fb.y + fb.h + 18);
+        hudCtx.restore();
+      }
 
       // Brahmastra fire meshes permanently disabled (Zero orange balls)
 
@@ -3115,6 +3763,11 @@
     });
 
     window.addEventListener('mousemove', (e) => {
+      if (is360TurntableActive && isTurntableDragging) {
+        const dx = e.clientX - prevTurntableMouse.x;
+        turntableAngle += dx * 0.015;
+        prevTurntableMouse = { x: e.clientX, y: e.clientY };
+      }
       if (!isPropInspectActive || !isInspectDragging) return;
       const dx = e.clientX - prevInspectMouse.x;
       const dy = e.clientY - prevInspectMouse.y;
@@ -3123,7 +3776,7 @@
       prevInspectMouse = { x: e.clientX, y: e.clientY };
     });
 
-    window.addEventListener('mouseup', () => { isInspectDragging = false; });
+    window.addEventListener('mouseup', () => { isInspectDragging = false; isTurntableDragging = false; });
 
     window.addEventListener('wheel', (e) => {
       if (!isPropInspectActive) return;
@@ -3320,6 +3973,23 @@
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
           }, 100);
+
+          // Save Real-Time MoCap & Facial Expression Timeline JSON
+          if (recordedMoCapTimeline && recordedMoCapTimeline.length > 0) {
+            const dataBlob = new Blob([JSON.stringify(recordedMoCapTimeline, null, 2)], { type: 'application/json' });
+            const dataUrl = URL.createObjectURL(dataBlob);
+            const dataLink = document.createElement('a');
+            dataLink.style.display = 'none';
+            dataLink.href = dataUrl;
+            dataLink.download = `HIGGSFIELD_MOCAP_EXPRESSIONS_${Date.now()}.json`;
+            document.body.appendChild(dataLink);
+            dataLink.click();
+            setTimeout(() => {
+              document.body.removeChild(dataLink);
+              window.URL.revokeObjectURL(dataUrl);
+            }, 100);
+          }
+          showQiToast("🎥 Recorded Full 60 FPS Video & MoCap Facial Expression Track!");
         };
 
         mediaRecorder.start();
@@ -3502,6 +4172,40 @@
         y: (mocapJoints.ls.y + mocapJoints.rs.y + mocapJoints.lh.y + mocapJoints.rh.y) * 0.25,
         z: (mocapJoints.ls.z + mocapJoints.rs.z + mocapJoints.lh.z + mocapJoints.rh.z) * 0.25
       };
+
+      // Real-Time Facial Landmarks & Biometrics (Face Recognition)
+      if (lms[2])  mocapJoints.leye = videoToScreen(lms[2].x, lms[2].y, lms[2].z);
+      if (lms[5])  mocapJoints.reye = videoToScreen(lms[5].x, lms[5].y, lms[5].z);
+      if (lms[7])  mocapJoints.lear = videoToScreen(lms[7].x, lms[7].y, lms[7].z);
+      if (lms[8])  mocapJoints.rear = videoToScreen(lms[8].x, lms[8].y, lms[8].z);
+      if (lms[9])  mocapJoints.mouthL = videoToScreen(lms[9].x, lms[9].y, lms[9].z);
+      if (lms[10]) mocapJoints.mouthR = videoToScreen(lms[10].x, lms[10].y, lms[10].z);
+
+      if (mocapJoints.leye && mocapJoints.reye && mocapJoints.mouthL && mocapJoints.mouthR) {
+        const eyeDist = Math.hypot(mocapJoints.reye.x - mocapJoints.leye.x, mocapJoints.reye.y - mocapJoints.leye.y) || 45;
+        const mouthY = (mocapJoints.mouthL.y + mocapJoints.mouthR.y) * 0.5;
+        const mouthSpan = Math.hypot(mocapJoints.mouthR.x - mocapJoints.mouthL.x, mocapJoints.mouthR.y - mocapJoints.mouthL.y);
+
+        // Live Facial Expression Calculations
+        const dJaw = (mouthY - mocapJoints.nose.y) / eyeDist;
+        const liveJaw = Math.max(0, Math.min(1.0, (dJaw - 0.62) / 0.42));
+        const liveSmile = Math.max(0, Math.min(1.0, (mouthSpan / eyeDist - 0.70) / 0.35));
+        const eyeCenterY = (mocapJoints.leye.y + mocapJoints.reye.y) * 0.5;
+        const liveBrow = Math.max(0, Math.min(1.0, ((mocapJoints.nose.y - eyeCenterY) / eyeDist - 0.38) / 0.28));
+
+        // Damped Cinematic Expression Smoothing (Zero Jitter)
+        MULTI_PERSON_REGISTRY.p1.expression.jawOpen += (liveJaw - MULTI_PERSON_REGISTRY.p1.expression.jawOpen) * 0.35;
+        MULTI_PERSON_REGISTRY.p1.expression.smile += (liveSmile - MULTI_PERSON_REGISTRY.p1.expression.smile) * 0.35;
+        MULTI_PERSON_REGISTRY.p1.expression.brow += (liveBrow - MULTI_PERSON_REGISTRY.p1.expression.brow) * 0.35;
+
+        // Biometric Face Bounding Box for Stark Cyber Reticle
+        MULTI_PERSON_REGISTRY.p1.faceBox = {
+          x: mocapJoints.nose.x - eyeDist * 1.35,
+          y: mocapJoints.nose.y - eyeDist * 1.55,
+          w: eyeDist * 2.7,
+          h: eyeDist * 3.1
+        };
+      }
 
       mocapJoints.detected = true;
 
@@ -3890,8 +4594,124 @@
     // [Q]: Toggle Qi Color
     // [F]: Fullscreen
     // [H]: Toggle HUD Controls
+    // Helper functions for Clean Background, Character Switcher, Turntable & Multi-Person
+    function captureCleanBackground() {
+      const banner = document.getElementById('bgCountdownBanner');
+      const num = document.getElementById('bgCountdownNum');
+      const bgCanvas = document.getElementById('bgCanvas');
+      if (!banner || !num || !bgCanvas) return;
+
+      if (isCleanBgActive) {
+        isCleanBgActive = false;
+        bgCanvas.style.display = 'none';
+        video.style.display = 'block';
+        if (btnCaptureBg) {
+          btnCaptureBg.innerText = "📸 CAPTURE BG [B]";
+          btnCaptureBg.style.background = "rgba(16, 185, 129, 0.25)";
+        }
+        showQiToast("📸 Live Camera Restored!");
+        return;
+      }
+
+      banner.style.display = 'block';
+      let count = 3;
+      num.innerText = count;
+      playRingClangSFX(1.4);
+
+      const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          num.innerText = count;
+          playRingClangSFX(1.6);
+        } else {
+          clearInterval(interval);
+          banner.style.display = 'none';
+
+          bgCanvas.width = video.videoWidth || 1280;
+          bgCanvas.height = video.videoHeight || 720;
+          const bgCtx = bgCanvas.getContext('2d');
+          bgCtx.drawImage(video, 0, 0, bgCanvas.width, bgCanvas.height);
+
+          isCleanBgActive = true;
+          bgCanvas.style.display = 'block';
+          video.style.display = 'none';
+
+          if (btnCaptureBg) {
+            btnCaptureBg.innerText = "📸 BG: LOCKED [B]";
+            btnCaptureBg.style.background = "rgba(16, 185, 129, 0.65)";
+            btnCaptureBg.style.borderColor = "#10b981";
+            btnCaptureBg.style.color = "#fff";
+          }
+
+          playRingClangSFX(2.0);
+          showQiToast("📸 Clean Background Locked! Step into view to become the 3D Avatar.");
+        }
+      }, 1000);
+    }
+
+    function cycleCharacterModel() {
+      const models = ['GOKU', 'VEGETA', 'INDIAN_2', 'GITHUB_XBOT', 'CYBER_WARRIOR'];
+      const nextIdx = (models.indexOf(activeCharacterModel) + 1) % models.length;
+      activeCharacterModel = models[nextIdx];
+      MULTI_PERSON_REGISTRY.p1.character = activeCharacterModel;
+      if (btnModelSelect) {
+        btnModelSelect.innerText = `🥋 MODEL: ${activeCharacterModel} [G]`;
+      }
+      showQiToast(`🥋 3D Character Model Switched to: ${activeCharacterModel}`);
+    }
+
+    function toggleMultiPerson() {
+      isMultiPersonEnabled = !isMultiPersonEnabled;
+      if (btnMultiPerson) {
+        btnMultiPerson.innerText = isMultiPersonEnabled ? "👥 MULTI-PERSON: 2 PERSONS [P]" : "👥 MULTI-PERSON: 1 PERSON [P]";
+        btnMultiPerson.style.opacity = isMultiPersonEnabled ? "1.0" : "0.6";
+      }
+      showQiToast(isMultiPersonEnabled ? "👥 Multi-Person VFX Enabled (Goku & Vegeta Sparring)!" : "👤 Single Person Mode Active");
+    }
+
+    function toggle360Turntable() {
+      is360TurntableActive = !is360TurntableActive;
+      if (btnTurntable360) {
+        btnTurntable360.innerText = is360TurntableActive ? "🔄 360° SPIN: ON [O]" : "🔄 360° GOKU [O]";
+        btnTurntable360.style.background = is360TurntableActive ? "rgba(245, 158, 11, 0.65)" : "rgba(245, 158, 11, 0.25)";
+      }
+      showQiToast(is360TurntableActive ? "🔄 360° Turntable Orbit Active! Drag to spin." : "🔄 360° Turntable Stopped");
+    }
+
+    // Connect HUD button listeners
+    const btnCaptureBg = document.getElementById('btnCaptureBg');
+    if (btnCaptureBg) btnCaptureBg.addEventListener('click', captureCleanBackground);
+
+    const btnModelSelect = document.getElementById('btnModelSelect');
+    if (btnModelSelect) btnModelSelect.addEventListener('click', cycleCharacterModel);
+
+    const btnMultiPerson = document.getElementById('btnMultiPerson');
+    if (btnMultiPerson) btnMultiPerson.addEventListener('click', toggleMultiPerson);
+
+    const btnTurntable360 = document.getElementById('btnTurntable360');
+    if (btnTurntable360) btnTurntable360.addEventListener('click', toggle360Turntable);
+
+    const btnKamehameha = document.getElementById('btnKamehameha');
+    if (btnKamehameha) btnKamehameha.addEventListener('click', () => {
+      kamehamehaState.firing = true;
+      kamehamehaState.fireTimer = 40;
+      playBlastAudio();
+      showQiToast("⚡ KAMEHAMEHA BLAST DETONATED!");
+    });
+
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'f' || e.key === 'F') {
+      if (e.key === 'b' || e.key === 'B') {
+        captureCleanBackground();
+      } else if (e.key === 'g' || e.key === 'G') {
+        cycleCharacterModel();
+      } else if (e.key === 'p' || e.key === 'P') {
+        toggleMultiPerson();
+      } else if (e.key === 'o' || e.key === 'O') {
+        toggle360Turntable();
+      } else if (e.key === 'c' || e.key === 'C') {
+        showMeshMoCap = !showMeshMoCap;
+        if (btnMeshMoCap) btnMeshMoCap.innerText = showMeshMoCap ? "🛡️ 3D MESH: ON" : "🛡️ 3D MESH: OFF";
+      } else if (e.key === 'f' || e.key === 'F') {
         toggleBrowserFullscreen();
       } else if (e.key === 'h' || e.key === 'H') {
         toggleHud();
