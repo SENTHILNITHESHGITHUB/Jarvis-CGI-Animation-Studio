@@ -7,3 +7,24 @@ temp_*/
 *.log
 masters/*.mp4
 *.mp4
+*.webm
+*.mov
+*.avi
+*.mkv
+
+# User Privacy & Zero Photo Upload Safeguard (Strict Guarantee)
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.bmp
+*.gif
+*.tiff
+assets/
+uploads/
+user_uploads/
+.user_uploaded/
+recordings/
+snapshots/
+camera_captures/
+webcam/
