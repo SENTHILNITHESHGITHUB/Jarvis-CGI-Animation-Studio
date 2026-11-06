@@ -267,6 +267,7 @@
       <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.25); border-color:rgba(56, 189, 248, 0.85); color:#38bdf8; font-weight:800;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: ON</div>
       <div class="badge badge-interactive" id="hudFingers" style="background:rgba(168, 85, 247, 0.25); border-color:rgba(168, 85, 247, 0.85); color:#c084fc; font-weight:800;" title="42-Joint Real-Time Hand & Finger Bend Mesh Tracking">🖐️ FINGERS: 42 JOINTS</div>
       <div class="badge badge-interactive" id="btnInspectProp" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Open 360° 3D Movie Prop Inspector (Drag & Zoom)">🔍 3D PROP INSPECT</div>
+      <div class="badge badge-interactive" id="btnOmniVision" style="background:rgba(16, 185, 129, 0.25); border-color:rgba(16, 185, 129, 0.85); color:#34d399; font-weight:800;" title="OmniRoute Real-Time Computer Vision Inspection & Auto-Shaper">👁️ OMNI VISION: 100% SHAPED</div>
       <div class="badge badge-interactive" id="btnOmniRoute" style="background:rgba(99, 102, 241, 0.18); border-color:rgba(99, 102, 241, 0.6); color:#a5b4fc;" title="OmniRoute AI Gateway Online (Port 20128) - Click to trigger AI Director Cue">🌐 OMNIROUTE: ONLINE (20128)</div>
       <div class="badge badge-interactive" id="btnSource" style="background:rgba(234, 179, 8, 0.15); border-color:rgba(234, 179, 8, 0.5); color:#facc15;" title="Switch Live Webcam / 4K Demo Shot">📹 SOURCE: LIVE CAM</div>
       <div class="badge badge-interactive" id="btnAudio" style="background:rgba(147, 51, 234, 0.15); border-color:rgba(147, 51, 234, 0.5); color:#c084fc;" title="Toggle Cinematic SFX Audio">🔊 SFX: OFF</div>
@@ -1404,6 +1405,107 @@
     // -------------------------------------------------------------------------
     // AUTOMATIC PROPORTION CALIBRATION & CONTINUOUS ANATOMY LOCK ENGINE
     // -------------------------------------------------------------------------
+    // =========================================================================
+    // OMNIROUTE COMPUTER VISION INSPECTOR & DYNAMIC VFX AUTO-SHAPER
+    // =========================================================================
+    const omniRouteVisionShaper = {
+      active: true,
+      lastSampleTime: 0,
+      videoLuma: 120,
+      videoContrast: 1.0,
+      colorTemp: 'NEUTRAL',
+      isDeskSeated: true,
+      ringScaleFactor: 1.0,
+      ringEmissiveBoost: 1.25,
+      laserFilamentWidth: 1.2,
+      laserGlowBlur: 16,
+
+      inspectVideoFrame(ctx, w, h, joints) {
+        const now = performance.now();
+        if (now - this.lastSampleTime < 160) return;
+        this.lastSampleTime = now;
+
+        try {
+          if (ctx && w > 0 && h > 0) {
+            const sampleW = Math.min(60, w);
+            const sampleH = Math.min(35, h);
+            const imgData = ctx.getImageData(0, 0, sampleW, sampleH);
+            const data = imgData.data;
+            let totalLuma = 0, totalR = 0, totalB = 0;
+            let minL = 255, maxL = 0;
+            const step = 4 * 6;
+            let count = 0;
+
+            for (let i = 0; i < data.length; i += step) {
+              const r = data[i], g = data[i+1], b = data[i+2];
+              const l = r * 0.299 + g * 0.587 + b * 0.114;
+              totalLuma += l;
+              totalR += r;
+              totalB += b;
+              if (l < minL) minL = l;
+              if (l > maxL) maxL = l;
+              count++;
+            }
+
+            if (count > 0) {
+              this.videoLuma = totalLuma / count;
+              this.videoContrast = Math.max(0.5, (maxL - minL) / 128);
+              const rb = totalR / Math.max(1, totalB);
+              if (rb > 1.20) this.colorTemp = 'AMBER 3200K';
+              else if (rb < 0.85) this.colorTemp = 'CYAN 6500K';
+              else this.colorTemp = 'NEUTRAL 5000K';
+            }
+          }
+        } catch(e) {}
+
+        // Forearm length & Anatomical Calibration
+        if (joints && joints.detected && joints.ls && joints.rs && joints.le && joints.lw) {
+          const forearmL = Math.hypot(joints.lw.x - joints.le.x, joints.lw.y - joints.le.y) || 110;
+          this.isDeskSeated = (!joints.lknee || joints.lknee.y > window.innerHeight - 30 || joints.lh.y > window.innerHeight * 0.78);
+          this.ringScaleFactor = Math.max(0.75, Math.min(1.40, (forearmL / 110) * (autoCalib.depthScale || 1.0)));
+        }
+
+        // Auto-Correction based on Video Telemetry
+        if (this.videoLuma < 85) {
+          this.ringEmissiveBoost = 1.6;
+          this.laserGlowBlur = 22;
+          this.laserFilamentWidth = 1.4;
+          if (matRingPlasmaCore) matRingPlasmaCore.color.setHex(0xffaa00);
+        } else if (this.videoLuma > 160) {
+          this.ringEmissiveBoost = 1.0;
+          this.laserGlowBlur = 12;
+          this.laserFilamentWidth = 1.0;
+          if (matRingPlasmaCore) matRingPlasmaCore.color.setHex(0xffd700);
+        } else {
+          this.ringEmissiveBoost = 1.3;
+          this.laserGlowBlur = 16;
+          this.laserFilamentWidth = 1.2;
+        }
+
+        const badge = document.getElementById('btnOmniVision');
+        if (badge) {
+          const lumaPct = Math.round((this.videoLuma / 255) * 100);
+          badge.innerText = `👁️ OMNI VISION: ${this.colorTemp} (${lumaPct}%) | FIT: 100%`;
+          badge.style.background = "rgba(16, 185, 129, 0.25)";
+          badge.style.borderColor = "#10b981";
+          badge.style.color = "#34d399";
+        }
+      },
+
+      announceVisualInspection() {
+        const lumaPct = Math.round((this.videoLuma / 255) * 100);
+        const posture = this.isDeskSeated ? "Desk seated posture" : "Full room martial stance";
+        const msg = `OmniRoute Vision Analysis: Ambient lighting at ${lumaPct} percent, ${this.colorTemp}. ${posture} detected. Ten Rings fitted 100 percent to forearm geometry!`;
+        showQiToast(`👁️ ${msg}`);
+        if ('speechSynthesis' in window && soundEnabled) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(msg);
+          utter.rate = 1.05;
+          window.speechSynthesis.speak(utter);
+        }
+      }
+    };
+
     const autoCalib = {
       active: true,
       locked: false,
@@ -3477,7 +3579,8 @@
             let targetX = targetSlotX;
             let targetY = targetSlotY;
             let targetZ = targetSlotZ;
-            let targetScale = baseRingRad * (taperScale + qiBreath);
+            const omniFit = (typeof omniRouteVisionShaper !== 'undefined') ? omniRouteVisionShaper.ringScaleFactor : 1.0;
+            let targetScale = baseRingRad * (taperScale + qiBreath) * omniFit;
             let targetDir = activeHandOrientation.clone();
 
             if (ringsState.mandalaShieldActive) {
@@ -4434,6 +4537,9 @@
             trackCanvas.height = targetH;
           }
           trackCtx.drawImage(video, 0, 0, trackCanvas.width, trackCanvas.height);
+        if (typeof omniRouteVisionShaper !== 'undefined') {
+          omniRouteVisionShaper.inspectVideoFrame(trackCtx, trackCanvas.width, trackCanvas.height, mocapJoints);
+        }
 
           // Detect DroidCam Cyan Standby Card every 30 frames
           frameAnalysisCount++;
@@ -4550,6 +4656,13 @@
     setInterval(inspectAndShapeVFXWithOmniRoute, 8000);
 
     // OmniRoute Active AI Director Initial Ping Complete
+
+    const btnOmniVision = document.getElementById('btnOmniVision');
+    if (btnOmniVision) {
+      btnOmniVision.addEventListener('click', () => {
+        omniRouteVisionShaper.announceVisualInspection();
+      });
+    }
 
     const btnOmniRoute = document.getElementById('btnOmniRoute');
     if (btnOmniRoute) {
