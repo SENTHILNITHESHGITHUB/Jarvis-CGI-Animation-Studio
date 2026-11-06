@@ -12,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
   <style>
     :root {
@@ -250,6 +251,7 @@
       <div class="badge badge-interactive" id="btnFullscreen" style="background:rgba(59, 130, 246, 0.22); border-color:rgba(59, 130, 246, 0.7); color:#60a5fa; font-weight:800;" title="Toggle Fullscreen (Hotkey [F])">⛶ FULLSCREEN [F]</div>
       <div class="badge badge-interactive" id="btnToggleHud" style="background:rgba(255, 255, 255, 0.12); border-color:rgba(255, 255, 255, 0.35); color:#e2e8f0; font-weight:700;" title="Toggle HUD Auto-Hide (Hotkey [H])">👁️ HUD [H]</div>
       <div class="badge badge-interactive" id="btnSkeleton" style="background:rgba(56, 189, 248, 0.25); border-color:rgba(56, 189, 248, 0.85); color:#38bdf8; font-weight:800;" title="Toggle MoCap Skeletal Rig Overlay">🦴 SKELETON: ON</div>
+      <div class="badge badge-interactive" id="hudFingers" style="background:rgba(168, 85, 247, 0.25); border-color:rgba(168, 85, 247, 0.85); color:#c084fc; font-weight:800;" title="42-Joint Real-Time Hand & Finger Bend Mesh Tracking">🖐️ FINGERS: 42 JOINTS</div>
       <div class="badge badge-interactive" id="btnInspectProp" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Open 360° 3D Movie Prop Inspector (Drag & Zoom)">🔍 3D PROP INSPECT</div>
       <div class="badge badge-interactive" id="btnOmniRoute" style="background:rgba(99, 102, 241, 0.18); border-color:rgba(99, 102, 241, 0.6); color:#a5b4fc;" title="OmniRoute AI Gateway Online (Port 20128) - Click to trigger AI Director Cue">🌐 OMNIROUTE: ONLINE (20128)</div>
       <div class="badge badge-interactive" id="btnSource" style="background:rgba(234, 179, 8, 0.15); border-color:rgba(234, 179, 8, 0.5); color:#facc15;" title="Switch Live Webcam / 4K Demo Shot">📹 SOURCE: LIVE CAM</div>
@@ -1627,6 +1629,44 @@
     const forearmR = makeWarriorMesh(unitCyl, matCarapace);
     const handL = makeWarriorMesh(unitBox, matAstraGold);
     const handR = makeWarriorMesh(unitBox, matAstraGold);
+
+    // -------------------------------------------------------------------------
+    // 3D FULL-ARTICULATED NANOTECH HAND & FINGER MESH RIG (21 JOINTS PER HAND)
+    // -------------------------------------------------------------------------
+    function createHandMeshRig() {
+      // 15 finger phalanx cylinders (3 per finger: proximal, intermediate, distal)
+      const phalanges = [];
+      for (let i = 0; i < 15; i++) {
+        phalanges.push(makeWarriorMesh(unitCyl, i % 2 === 0 ? matCarapace : matAstraGold));
+      }
+      // 5 Palm Metacarpal connector struts bridging Wrist to MCPs
+      const palmStruts = [];
+      for (let i = 0; i < 5; i++) {
+        palmStruts.push(makeWarriorMesh(unitCyl, matRubyCarapace));
+      }
+      // 4 Knuckle transverse bridge cylinders
+      const knuckleBridges = [];
+      for (let i = 0; i < 4; i++) {
+        knuckleBridges.push(makeWarriorMesh(unitCyl, matAstraGold));
+      }
+      // 21 Joint Articulation Ball Spheres
+      const jointNodes = [];
+      for (let i = 0; i < 21; i++) {
+        const isTip = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20);
+        jointNodes.push(makeWarriorMesh(unitSphere, isTip ? matSuryaCore : matJointBall));
+      }
+      return { phalanges, palmStruts, knuckleBridges, jointNodes };
+    }
+
+    const handRigL = createHandMeshRig();
+    const handRigR = createHandMeshRig();
+
+    function setHandRigVisible(rig, visible) {
+      rig.phalanges.forEach(m => m.visible = visible);
+      rig.palmStruts.forEach(m => m.visible = visible);
+      rig.knuckleBridges.forEach(m => m.visible = visible);
+      rig.jointNodes.forEach(m => m.visible = visible);
+    }
     const thighL = makeWarriorMesh(unitCyl, matCarapace);
     const thighR = makeWarriorMesh(unitCyl, matCarapace);
     const shinL = makeWarriorMesh(unitCyl, matRubyCarapace);
@@ -1665,6 +1705,92 @@
     let timeVal = 0;
 
     // Full 33-Joint MoCap Rig Structure with 3D Z-coordinates (Chest-Level Martial Arts Guard)
+    // -------------------------------------------------------------------------
+    // 42-JOINT REAL-TIME FINGER BEND & HAND KINEMATICS ENGINE
+    // -------------------------------------------------------------------------
+    const handJointsL = {
+      detected: false,
+      points: [],
+      bends: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
+      bendDegrees: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
+      gesture: 'MARTIAL GUARD',
+      gestureCode: 'GUARD',
+      fistRatio: 0
+    };
+    const handJointsR = {
+      detected: false,
+      points: [],
+      bends: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
+      bendDegrees: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
+      gesture: 'MARTIAL GUARD',
+      gestureCode: 'GUARD',
+      fistRatio: 0
+    };
+
+    function calcJointAngle(A, B, C) {
+      if (!A || !B || !C) return 180;
+      const v1x = A.x - B.x, v1y = A.y - B.y, v1z = (A.z || 0) - (B.z || 0);
+      const v2x = C.x - B.x, v2y = C.y - B.y, v2z = (C.z || 0) - (B.z || 0);
+      const len1 = Math.hypot(v1x, v1y, v1z) || 1;
+      const len2 = Math.hypot(v2x, v2y, v2z) || 1;
+      const dot = (v1x * v2x + v1y * v2y + v1z * v2z) / (len1 * len2);
+      const clampedDot = Math.max(-1, Math.min(1, dot));
+      return Math.acos(clampedDot) * (180 / Math.PI);
+    }
+
+    function computeFingerCurl(mcp, pip, dip, tip, wrist) {
+      const angPip = Math.max(0, 180 - calcJointAngle(mcp, pip, dip));
+      const angDip = Math.max(0, 180 - calcJointAngle(pip, dip, tip));
+      const totalBendDeg = Math.round(angPip * 0.65 + angDip * 0.35);
+
+      const dTipWrist = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+      const dMcpWrist = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y) || 1;
+      const radialCurl = Math.max(0, Math.min(1, (1.9 * dMcpWrist - dTipWrist) / (1.1 * dMcpWrist)));
+
+      const bendRatio = Math.max(0, Math.min(1, (totalBendDeg - 15) / 85));
+      const combinedCurl = Math.max(0, Math.min(1, bendRatio * 0.65 + radialCurl * 0.35));
+      return { deg: totalBendDeg, ratio: combinedCurl };
+    }
+
+    function computeThumbCurl(cmc, mcp, ip, tip, pinkyMcp, wrist) {
+      const angMcp = Math.max(0, 180 - calcJointAngle(cmc, mcp, ip));
+      const angIp = Math.max(0, 180 - calcJointAngle(mcp, ip, tip));
+      const totalBendDeg = Math.round(angMcp * 0.6 + angIp * 0.4);
+
+      const dTipPinky = Math.hypot(tip.x - pinkyMcp.x, tip.y - pinkyMcp.y);
+      const dMcpPinky = Math.hypot(mcp.x - pinkyMcp.x, mcp.y - pinkyMcp.y) || 1;
+      const tuckedRatio = Math.max(0, Math.min(1, (1.3 * dMcpPinky - dTipPinky) / (1.0 * dMcpPinky)));
+
+      const bendRatio = Math.max(0, Math.min(1, (totalBendDeg - 12) / 80));
+      const combinedCurl = Math.max(0, Math.min(1, bendRatio * 0.5 + tuckedRatio * 0.5));
+      return { deg: totalBendDeg, ratio: combinedCurl };
+    }
+
+    function classifyHandGesture(bends, pts) {
+      const avgCurl = (bends.index.ratio + bends.middle.ratio + bends.ring.ratio + bends.pinky.ratio) * 0.25;
+      const isIndexStraight = bends.index.ratio < 0.28;
+      const isMidStraight = bends.middle.ratio < 0.28;
+      const isRingCurled = bends.ring.ratio > 0.55;
+      const isPinkyCurled = bends.pinky.ratio > 0.55;
+
+      const dThumbIndex = Math.hypot(pts[4].x - pts[8].x, pts[4].y - pts[8].y);
+
+      if (avgCurl > 0.65) {
+        return { name: "CLOSED FIST", code: "FIST", ratio: avgCurl };
+      } else if (avgCurl < 0.25) {
+        return { name: "OPEN DRAGON PALM", code: "OPEN_PALM", ratio: avgCurl };
+      } else if (isIndexStraight && isMidStraight && isRingCurled && isPinkyCurled) {
+        return { name: "TAOIST SWORD MUDRA", code: "SWORD_MUDRA", ratio: avgCurl };
+      } else if (dThumbIndex < 28 && bends.middle.ratio < 0.45) {
+        return { name: "QI PINCH RETICLE", code: "PINCH", ratio: avgCurl };
+      } else if (avgCurl >= 0.35 && avgCurl <= 0.65) {
+        return { name: "TIGER / DRAGON CLAW", code: "DRAGON_CLAW", ratio: avgCurl };
+      } else if (isIndexStraight && !isMidStraight && isRingCurled) {
+        return { name: "DIRECTOR POINT", code: "POINT", ratio: avgCurl };
+      }
+      return { name: "MARTIAL GUARD", code: "GUARD", ratio: avgCurl };
+    }
+
     let mocapJoints = {
       nose: { x: window.innerWidth * 0.50, y: window.innerHeight * 0.32, z: 0 },
       ls: { x: window.innerWidth * 0.40, y: window.innerHeight * 0.44, z: 0 },
@@ -1853,6 +1979,87 @@
         hudCtx.lineTo(joints.rw.x + dxR * 0.35, joints.rw.y + dyR * 0.35);
         hudCtx.stroke();
       }
+
+      // -----------------------------------------------------------------------
+      // 42-JOINT CYBERNETIC HAND & FINGER SKELETAL RIG OVERLAY
+      // -----------------------------------------------------------------------
+      function drawHandMoCapRig(hand, isLeft) {
+        if (!hand.detected || !hand.points || hand.points.length < 21) return;
+        const pts = hand.points;
+
+        hudCtx.save();
+        hudCtx.lineWidth = 2.0;
+        hudCtx.strokeStyle = isLeft ? 'rgba(0, 240, 255, 0.90)' : 'rgba(56, 189, 248, 0.90)';
+        hudCtx.shadowColor = '#00f0ff';
+        hudCtx.shadowBlur = 10;
+
+        // 5 Articulated Finger Kinematic Chains
+        const fingerChains = [
+          [0, 1, 2, 3, 4],       // Thumb
+          [0, 5, 6, 7, 8],       // Index
+          [0, 9, 10, 11, 12],    // Middle
+          [0, 13, 14, 15, 16],   // Ring
+          [0, 17, 18, 19, 20]    // Pinky
+        ];
+
+        fingerChains.forEach(chain => {
+          hudCtx.beginPath();
+          hudCtx.moveTo(pts[chain[0]].x, pts[chain[0]].y);
+          for (let i = 1; i < chain.length; i++) {
+            hudCtx.lineTo(pts[chain[i]].x, pts[chain[i]].y);
+          }
+          hudCtx.stroke();
+        });
+
+        // Transverse Metacarpal Arch
+        hudCtx.beginPath();
+        hudCtx.moveTo(pts[1].x, pts[1].y);
+        [5, 9, 13, 17].forEach(idx => hudCtx.lineTo(pts[idx].x, pts[idx].y));
+        hudCtx.stroke();
+
+        // 21 Joint Articulation Nodes
+        for (let i = 0; i < 21; i++) {
+          const isTip = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20);
+          const p = pts[i];
+          hudCtx.fillStyle = isTip ? '#fde047' : '#38bdf8';
+          hudCtx.beginPath();
+          hudCtx.arc(p.x, p.y, isTip ? 4.8 : 3.0, 0, Math.PI * 2);
+          hudCtx.fill();
+
+          if (isTip) {
+            hudCtx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+            hudCtx.lineWidth = 1.4;
+            hudCtx.beginPath();
+            hudCtx.arc(p.x, p.y, 7.5, 0, Math.PI * 2);
+            hudCtx.stroke();
+          }
+        }
+
+        // Live Finger Bend Degrees & Gesture Readout
+        const wrist = pts[0];
+        const tagX = isLeft ? wrist.x - 175 : wrist.x + 35;
+        const tagY = wrist.y + 35;
+
+        hudCtx.fillStyle = 'rgba(10, 14, 26, 0.90)';
+        hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.65)';
+        hudCtx.lineWidth = 1.2;
+        hudCtx.fillRect(tagX, tagY, 178, 54);
+        hudCtx.strokeRect(tagX, tagY, 178, 54);
+
+        hudCtx.font = 'bold 9px monospace';
+        hudCtx.fillStyle = '#fbbf24';
+        hudCtx.fillText(`${isLeft ? 'LEFT' : 'RIGHT'} HAND: ${hand.gesture}`, tagX + 8, tagY + 14);
+
+        hudCtx.font = '8px monospace';
+        hudCtx.fillStyle = '#94a3b8';
+        hudCtx.fillText(`T:${hand.bendDegrees.thumb}° I:${hand.bendDegrees.index}° M:${hand.bendDegrees.middle}°`, tagX + 8, tagY + 28);
+        hudCtx.fillText(`R:${hand.bendDegrees.ring}° P:${hand.bendDegrees.pinky}° | FIST:${Math.round(hand.fistRatio * 100)}%`, tagX + 8, tagY + 42);
+
+        hudCtx.restore();
+      }
+
+      drawHandMoCapRig(handJointsL, true);
+      drawHandMoCapRig(handJointsR, false);
 
       // REAL-TIME MARTIAL ARTS GESTURE TELEMETRY OVERLAY (Per-Hand State Readouts)
       const isGold = (ringsState.mode === 'SHANG_CHI_GOLD');
@@ -2181,16 +2388,74 @@
         headGroup.rotation.y = -bodyOrientation.yawDeg * (Math.PI / 180) * 0.85;
         headGroup.rotation.x = bodyOrientation.pitchDeg * (Math.PI / 180);
 
-        // 11. Gauntlet Hands (Oriented along wrist -> finger vector)
-        const hdxL = (poseCurrent.lindex ? poseCurrent.lindex.x : poseCurrent.lw.x) - poseCurrent.lw.x;
-        const hdyL = -( (poseCurrent.lindex ? poseCurrent.lindex.y : poseCurrent.lw.y) - poseCurrent.lw.y );
-        handL.position.set(poseCurrent.lw.x - cxHalf + hdxL * 0.4, cyHalf - poseCurrent.lw.y + hdyL * 0.4, (poseCurrent.lw.z || 0) + 6);
-        handL.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
+        // ---------------------------------------------------------------------
+        // 11. 3D FULL-ARTICULATED MESH FINGER TRACKING (LEFT & RIGHT HANDS)
+        // ---------------------------------------------------------------------
+        function updateHandMeshRig3D(rig, hand, fallbackWrist, fallbackIndex, isLeft) {
+          if (hand.detected && hand.points && hand.points.length === 21) {
+            // Live 21-Joint 3D Mesh Finger Mapping
+            const pts = hand.points;
 
-        const hdxR = (poseCurrent.rindex ? poseCurrent.rindex.x : poseCurrent.rw.x) - poseCurrent.rw.x;
-        const hdyR = -( (poseCurrent.rindex ? poseCurrent.rindex.y : poseCurrent.rw.y) - poseCurrent.rw.y );
-        handR.position.set(poseCurrent.rw.x - cxHalf + hdxR * 0.4, cyHalf - poseCurrent.rw.y + hdyR * 0.4, (poseCurrent.rw.z || 0) + 6);
-        handR.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
+            // 1. Palm Metacarpal connector struts
+            const mcps = [1, 5, 9, 13, 17];
+            mcps.forEach((mcpIdx, i) => {
+              orientCylinder(rig.palmStruts[i], pts[0], pts[mcpIdx], 3.8 * dScale, cxHalf, cyHalf);
+            });
+
+            // 2. Knuckle transverse bridge
+            for (let i = 0; i < 4; i++) {
+              orientCylinder(rig.knuckleBridges[i], pts[mcps[i]], pts[mcps[i+1]], 3.2 * dScale, cxHalf, cyHalf);
+            }
+
+            // 3. 15 Articulated Finger Phalanx Cylinders
+            const fingerBones = [
+              [1, 2], [2, 3], [3, 4],       // Thumb
+              [5, 6], [6, 7], [7, 8],       // Index
+              [9, 10], [10, 11], [11, 12],  // Middle
+              [13, 14], [14, 15], [15, 16], // Ring
+              [17, 18], [18, 19], [19, 20]  // Pinky
+            ];
+            fingerBones.forEach(([a, b], idx) => {
+              const rad = (idx % 3 === 0 ? 3.6 : (idx % 3 === 1 ? 3.0 : 2.4)) * dScale;
+              orientCylinder(rig.phalanges[idx], pts[a], pts[b], rad, cxHalf, cyHalf);
+            });
+
+            // 4. 21 Joint Articulation Ball Spheres
+            for (let i = 0; i < 21; i++) {
+              const isTip = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20);
+              const isKnuckle = (i === 1 || i === 5 || i === 9 || i === 13 || i === 17);
+              const bRad = (isKnuckle ? 4.5 : (isTip ? 3.2 : 3.8)) * dScale;
+              placeBall(rig.jointNodes[i], pts[i], bRad, cxHalf, cyHalf);
+            }
+
+            setHandRigVisible(rig, true);
+            return true;
+          } else {
+            // Hand not detected: smoothly hide 3D finger segments and use gauntlet fallback
+            setHandRigVisible(rig, false);
+            return false;
+          }
+        }
+
+        const meshActiveL = updateHandMeshRig3D(handRigL, handJointsL, poseCurrent.lw, poseCurrent.lindex, true);
+        const meshActiveR = updateHandMeshRig3D(handRigR, handJointsR, poseCurrent.rw, poseCurrent.rindex, false);
+
+        // Fallback Gauntlet Hands (Only visible when 3D finger tracking is not locked)
+        handL.visible = !meshActiveL;
+        if (!meshActiveL) {
+          const hdxL = (poseCurrent.lindex ? poseCurrent.lindex.x : poseCurrent.lw.x) - poseCurrent.lw.x;
+          const hdyL = -( (poseCurrent.lindex ? poseCurrent.lindex.y : poseCurrent.lw.y) - poseCurrent.lw.y );
+          handL.position.set(poseCurrent.lw.x - cxHalf + hdxL * 0.4, cyHalf - poseCurrent.lw.y + hdyL * 0.4, (poseCurrent.lw.z || 0) + 6);
+          handL.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
+        }
+
+        handR.visible = !meshActiveR;
+        if (!meshActiveR) {
+          const hdxR = (poseCurrent.rindex ? poseCurrent.rindex.x : poseCurrent.rw.x) - poseCurrent.rw.x;
+          const hdyR = -( (poseCurrent.rindex ? poseCurrent.rindex.y : poseCurrent.rw.y) - poseCurrent.rw.y );
+          handR.position.set(poseCurrent.rw.x - cxHalf + hdxR * 0.4, cyHalf - poseCurrent.rw.y + hdyR * 0.4, (poseCurrent.rw.z || 0) + 6);
+          handR.scale.set(22 * dScale, 20 * dScale, 22 * dScale);
+        }
 
         // 12. Armored Combat Boots
         bootL.position.set(ankleL.x - cxHalf, cyHalf - ankleL.y - 12, (ankleL.z || 0) + 14);
@@ -2199,6 +2464,8 @@
         bootR.scale.set(22 * dScale, 16 * dScale, 32 * dScale);
       } else {
         warriorGroup.visible = false;
+        if (typeof handRigL !== 'undefined') setHandRigVisible(handRigL, false);
+        if (typeof handRigR !== 'undefined') setHandRigVisible(handRigR, false);
       }
 
       // Permanently hide all orange balls, fire plumes, solar chakra, and embers
@@ -3177,6 +3444,93 @@
     const pose = new Pose({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}` });
     pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.45 });
 
+    let handsDetector = null;
+    function handleHandsResults(res) {
+      if (!res.multiHandLandmarks || res.multiHandLandmarks.length === 0) {
+        handJointsL.detected = false;
+        handJointsR.detected = false;
+        return;
+      }
+
+      let foundL = false, foundR = false;
+
+      res.multiHandLandmarks.forEach((lms, idx) => {
+        const screenPts = lms.map(lm => videoToScreen(lm.x, lm.y, lm.z));
+        const wristPt = screenPts[0];
+
+        // Match to Left or Right arm by Euclidean proximity to pose wrist
+        const dL = Math.hypot(wristPt.x - poseCurrent.lw.x, wristPt.y - poseCurrent.lw.y);
+        const dR = Math.hypot(wristPt.x - poseCurrent.rw.x, wristPt.y - poseCurrent.rw.y);
+        const isLeft = (dL < dR);
+        const targetHand = isLeft ? handJointsL : handJointsR;
+
+        if (isLeft) foundL = true; else foundR = true;
+
+        if (!targetHand.points || targetHand.points.length !== 21) {
+          targetHand.points = screenPts.map(p => ({ x: p.x, y: p.y, z: p.z || 0 }));
+        } else {
+          const HLERP = 0.82;
+          for (let i = 0; i < 21; i++) {
+            targetHand.points[i].x += (screenPts[i].x - targetHand.points[i].x) * HLERP;
+            targetHand.points[i].y += (screenPts[i].y - targetHand.points[i].y) * HLERP;
+            targetHand.points[i].z += ((screenPts[i].z || 0) - (targetHand.points[i].z || 0)) * HLERP;
+          }
+        }
+
+        targetHand.detected = true;
+
+        const pts = targetHand.points;
+        const wrist = pts[0];
+
+        const curlThumb = computeThumbCurl(pts[1], pts[2], pts[3], pts[4], pts[17], wrist);
+        const curlIndex = computeFingerCurl(pts[5], pts[6], pts[7], pts[8], wrist);
+        const curlMiddle = computeFingerCurl(pts[9], pts[10], pts[11], pts[12], wrist);
+        const curlRing = computeFingerCurl(pts[13], pts[14], pts[15], pts[16], wrist);
+        const curlPinky = computeFingerCurl(pts[17], pts[18], pts[19], pts[20], wrist);
+
+        targetHand.bends = {
+          thumb: curlThumb.ratio,
+          index: curlIndex.ratio,
+          middle: curlMiddle.ratio,
+          ring: curlRing.ratio,
+          pinky: curlPinky.ratio
+        };
+        targetHand.bendDegrees = {
+          thumb: curlThumb.deg,
+          index: curlIndex.deg,
+          middle: curlMiddle.deg,
+          ring: curlRing.deg,
+          pinky: curlPinky.deg
+        };
+
+        const gest = classifyHandGesture(targetHand.bends, pts);
+        targetHand.gesture = gest.name;
+        targetHand.gestureCode = gest.code;
+        targetHand.fistRatio = gest.ratio;
+      });
+
+      if (!foundL) handJointsL.detected = false;
+      if (!foundR) handJointsR.detected = false;
+    }
+
+    if (typeof Hands !== 'undefined') {
+      try {
+        handsDetector = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+        handsDetector.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        handsDetector.onResults(handleHandsResults);
+      } catch(e) {
+        console.warn("Hands init error:", e);
+      }
+    } else {
+      window.addEventListener('load', () => {
+        if (typeof Hands !== 'undefined' && !handsDetector) {
+          handsDetector = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+          handsDetector.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+          handsDetector.onResults(handleHandsResults);
+        }
+      });
+    }
+
     pose.onResults((res) => {
       if (!res.poseLandmarks) {
         mocapJoints.detected = false;
@@ -3225,6 +3579,7 @@
     // -------------------------------------------------------------------------
     let isDemoMode = false;
     let isProcessingFrame = false;
+    let isHandsProcessing = false;
 
     function enableDemoMode() {
       isDemoMode = true;
@@ -3268,6 +3623,7 @@
         function feedDemoFrame() {
           if (!isDemoMode) return;
           pose.send({ image: trackCanvas }).catch(e => console.warn(e));
+          if (handsDetector) handsDetector.send({ image: trackCanvas }).catch(e => console.warn(e));
           setTimeout(feedDemoFrame, 80);
         }
         feedDemoFrame();
@@ -3398,7 +3754,13 @@
             }
           }
 
-          await pose.send({ image: trackCanvas });
+          const posePromise = pose.send({ image: trackCanvas });
+          let handsPromise = Promise.resolve();
+          if (handsDetector && !isHandsProcessing) {
+            isHandsProcessing = true;
+            handsPromise = handsDetector.send({ image: trackCanvas }).catch(e => {}).finally(() => { isHandsProcessing = false; });
+          }
+          await Promise.allSettled([posePromise, handsPromise]);
         } catch(err) {
           // Gracefully skip dropped frames
         }
