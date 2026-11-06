@@ -2570,90 +2570,53 @@
 
           const wristDist = Math.hypot(poseCurrent.lw.x - poseCurrent.rw.x, poseCurrent.lw.y - poseCurrent.rw.y);
 
-          // Hand Motion Vector Components (pixels / second)
+          // ===================================================================
+          // MASTER MOVIE KINEMATICS: CONTINUOUS HAND-BOUND TETHER ENGINE
+          // Each hand controls its own 5 rings completely independently!
+          // Extending your arm smoothly drives the rings forward ahead of fist.
+          // Pulling your arm back magnetically snaps the rings back to wrist.
+          // ===================================================================
+
+          // 1. PHYSICAL ARM EXTENSION & INTENTIONAL REACH
+          // extRatioL and extRatioR are computed above from real 3D shoulder-to-wrist reach vs calibrated arm length
+          // Resting guard is around 0.50..0.55; extension starts at 0.56; full reach is 0.85+
+          const extDriveL = Math.max(0, Math.min(1.0, (extRatioL - 0.56) / 0.32));
+          const extDriveR = Math.max(0, Math.min(1.0, (extRatioR - 0.56) / 0.32));
+
+          // Hand velocity projection along forearm vector
           const vLx = (poseCurrent.lw.x - oldL.x) / dtL;
           const vLy = (poseCurrent.lw.y - oldL.y) / dtL;
           const vLz = ((poseCurrent.lw.z || 0) - oldL.z) / dtL;
-
-          // Forearm Unit Vector (Elbow to Wrist)
-          const fdxL = poseCurrent.lw.x - poseCurrent.le.x;
-          const fdyL = poseCurrent.lw.y - poseCurrent.le.y;
-          const fdzL = (poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0);
+          const fdxL = poseCurrent.lw.x - poseCurrent.le.x, fdyL = poseCurrent.lw.y - poseCurrent.le.y, fdzL = (poseCurrent.lw.z || 0) - (poseCurrent.le.z || 0);
           const flenL = Math.hypot(fdxL, fdyL, fdzL) || 1;
-          const uFxL = fdxL / flenL, uFyL = fdyL / flenL, uFzL = fdzL / flenL;
+          const thrustVelL = (vLx * fdxL + vLy * fdyL + vLz * fdzL) / flenL;
 
-          // Directional Thrust along forearm extension axis
-          const thrustVelL = (vLx * uFxL) + (vLy * uFyL) + (vLz * uFzL);
-
-          // UPWARD HAND LIFT SUPPRESSION: Raising hand from desk/lap into guard
-          // Screen Y goes downward, so upward movement has oldL.y > poseCurrent.lw.y
-          // Strictly suppress upward raising if thrust along forearm is low (<60) and not driving toward camera
-          const isUpwardLiftL = (oldL.y - poseCurrent.lw.y > 30) && (thrustVelL < 60) && (forwardDeltaZL < 10);
-
-          // Right Arm Motion & Forearm Projection
           const vRx = (poseCurrent.rw.x - oldR.x) / dtR;
           const vRy = (poseCurrent.rw.y - oldR.y) / dtR;
           const vRz = ((poseCurrent.rw.z || 0) - oldR.z) / dtR;
-
-          const fdxR = poseCurrent.rw.x - poseCurrent.re.x;
-          const fdyR = poseCurrent.rw.y - poseCurrent.re.y;
-          const fdzR = (poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0);
+          const fdxR = poseCurrent.rw.x - poseCurrent.re.x, fdyR = poseCurrent.rw.y - poseCurrent.re.y, fdzR = (poseCurrent.rw.z || 0) - (poseCurrent.re.z || 0);
           const flenR = Math.hypot(fdxR, fdyR, fdzR) || 1;
-          const uFxR = fdxR / flenR, uFyR = fdyR / flenR, uFzR = fdzR / flenR;
+          const thrustVelR = (vRx * fdxR + vRy * fdyR + vRz * fdzR) / flenR;
 
-          const thrustVelR = (vRx * uFxR) + (vRy * uFyR) + (vRz * uFzR);
-
-          const isUpwardLiftR = (oldR.y - poseCurrent.rw.y > 30) && (thrustVelR < 60) && (forwardDeltaZR < 10);
-
-          // Strike Zones: Hands must be in active chest/torso zone, not hanging down at lap
-          const inStrikeZoneL = (poseCurrent.lw.y < hipsY - 15) && (poseCurrent.lw.y > poseCurrent.ls.y - 150);
-          const inStrikeZoneR = (poseCurrent.rw.y < hipsY - 15) && (poseCurrent.rw.y > poseCurrent.rs.y - 150);
-
-          // MASTER MARTIAL ARTS STRIKE SENSITIVITY:
-          // 1) Upward guard lift completely filtered out
-          // 2) Fires instantly on intentional punches (either forward forearm thrust > 110, or punch toward camera > 16)
-          // 3) Accommodates both straight and bent-elbow punches (extRatio >= 0.69 or forward camera thrust)
-          const isForwardThrustL = (thrustVelL > 110) || (reachVelL > 110) || (forwardDeltaZL > 14 && (thrustVelL > 55 || reachVelL > 55));
-          const isForwardThrustR = (thrustVelR > 110) || (reachVelR > 110) || (forwardDeltaZR > 14 && (thrustVelR > 55 || reachVelR > 55));
-
-          const isDrivingOutL = !isUpwardLiftL && (extRatioL >= 0.69 || forwardDeltaZL > 18) && isForwardThrustL;
-          const isDrivingOutR = !isUpwardLiftR && (extRatioR >= 0.69 || forwardDeltaZR > 18) && isForwardThrustR;
-
-          // 1. TAI CHI 10-RING MANDALA SHIELD (Crossed wrists across chest)
-          const chestZone = (poseCurrent.lw.y < torsoMidY + 45) && (poseCurrent.rw.y < torsoMidY + 45) &&
-                            (poseCurrent.lw.y > poseCurrent.ls.y - 85) && (poseCurrent.rw.y > poseCurrent.rs.y - 85);
-          const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x - 20) && (wristDist < 240);
-          const touchingChest = (wristDist < 135) && chestZone;
+          // 2. TAI CHI 10-RING MANDALA SHIELD (Crossed wrists across chest)
+          const chestZone = (poseCurrent.lw.y < torsoMidY + 55) && (poseCurrent.rw.y < torsoMidY + 55) &&
+                            (poseCurrent.lw.y > poseCurrent.ls.y - 95) && (poseCurrent.rw.y > poseCurrent.rs.y - 95);
+          const wristsCrossed = (poseCurrent.lw.x > poseCurrent.rw.x - 25) && (wristDist < 250);
+          const touchingChest = (wristDist < 145) && chestZone;
           const isShieldTrigger = (wristsCrossed || touchingChest) && chestZone && !ringsState.left.summonActive && !ringsState.right.summonActive;
 
           if (isShieldTrigger && !ringsState.mandalaShieldActive) {
             ringsState.mandalaShieldActive = true;
             playRingClangSFX(1.3);
             showQiToast("🛡️ TAI CHI MANDALA: 10 RINGS DEFENSE SHIELD!");
-          } else if (ringsState.mandalaShieldActive && (wristDist > 280 || poseCurrent.lw.y > hipsY - 20)) {
+          } else if (ringsState.mandalaShieldActive && (wristDist > 270 || poseCurrent.lw.y > hipsY - 15)) {
             ringsState.mandalaShieldActive = false;
+            playRingClangSFX(1.4);
+            showQiToast("⚡ SHIELD RELEASED: 5 RINGS ON EACH ARM");
           }
 
-          if (!ringsState.mandalaShieldActive) {
-            // 2. DUAL PALM THRUST (Both arms extending forward together)
-            const isDualThrust = isDrivingOutL && isDrivingOutR && (wristDist > 160);
-            if (isDualThrust && !ringsState.left.isStriking && !ringsState.right.isStriking) {
-              ringsState.triggerDualThrust();
-            } else {
-              // 3. INDEPENDENT LEFT HAND PUNCH (Fires Left 5 Rings only!)
-              if (inStrikeZoneL && isDrivingOutL && !ringsState.left.isStriking) {
-                ringsState.triggerStrikeLeft();
-              }
-
-              // 4. INDEPENDENT RIGHT HAND PUNCH (Fires Right 5 Rings only!)
-              if (inStrikeZoneR && isDrivingOutR && !ringsState.right.isStriking) {
-                ringsState.triggerStrikeRight();
-              }
-            }
-          }
-
-          // 5. QI CLAP MODE SHIFT
-          if (wristDist < 85 && !ringsState._clapCooldown) {
+          // 3. QI CLAP MODE SHIFT (Clap wrists/hands together)
+          if (wristDist < 90 && !ringsState._clapCooldown) {
             ringsState._clapCooldown = true;
             ringsState.toggleMode();
             playRingClangSFX(1.8);
@@ -2661,82 +2624,60 @@
             setTimeout(() => { ringsState._clapCooldown = false; }, 900);
           }
 
-          // ===================================================================
-          // 6. REAL-TIME HAND-BOUND TETHER & AUTOMATIC PULL-BACK KINEMATICS
-          // If the user pulls back their hand, the rings return automatically!
-          // ===================================================================
-
-          // --- LEFT HAND PULL-BACK UPDATE ---
-          if (ringsState.left.isStriking) {
-            if (reach3dL > ringsState.left.peakReach) {
-              ringsState.left.peakReach = reach3dL;
-            }
-
-            // DETECT PULL-BACK: Negative reach velocity, negative forward Z, or reach dropping below peak
-            const isPullingBackL = (reachVelL < -40) || (forwardDeltaZL < -8) || (reach3dL < ringsState.left.peakReach - 18) || (extRatioL < 0.65);
-
-            if (isPullingBackL) {
-              ringsState.left.isRetracting = true;
-            }
-
-            if (ringsState.left.isRetracting) {
-              // Magnetically whip back to hand! The faster you pull back, the faster they return!
-              const returnSpeed = Math.max(45, Math.abs(reachVelL) * 0.16);
-              ringsState.left.flightDist = Math.max(0, ringsState.left.flightDist - returnSpeed);
-
-              if (ringsState.left.flightDist <= 10) {
-                ringsState.left.flightDist = 0.0;
-                ringsState.left.isStriking = false;
-                ringsState.left.isRetracting = false;
-                ringsState.left.peakReach = 0.0;
-                playRingClangSFX(1.4);
-                showQiToast("⚡ LEFT 5 RINGS: SNAPPED BACK TO WRIST!");
+          // 4. INDEPENDENT LEFT HAND 5-RING FLIGHT KINEMATICS (MOVIE 1:1 REACTIVE)
+          if (!ringsState.mandalaShieldActive && !ringsState.left.summonActive) {
+            let desiredDistL = 0;
+            if (extDriveL > 0.05) {
+              desiredDistL = extDriveL * 400; // 0 to 400px ahead of knuckles
+              if (thrustVelL > 60 || forwardDeltaZL > 10) {
+                desiredDistL += Math.min(180, Math.max(0, thrustVelL * 0.45 + forwardDeltaZL * 6));
               }
-            } else {
-              // Hand is pushing out or holding forward -> Rings project out ahead of fist!
-              const punchRatio = Math.max(0, (extRatioL - 0.58) / 0.32);
-              const targetDist = 120 + punchRatio * 440;
-              ringsState.left.flightDist += (targetDist - ringsState.left.flightDist) * 0.35;
+            }
 
-              ringsState.left.holdFrames = (ringsState.left.holdFrames || 0) + 1;
-              if (ringsState.left.holdFrames > 90) { // Safety auto-retract after 3s
-                ringsState.left.isRetracting = true;
+            const wasStrikingL = ringsState.left.flightDist > 15;
+            if (desiredDistL > ringsState.left.flightDist) {
+              // Smooth forward projection
+              ringsState.left.flightDist += (desiredDistL - ringsState.left.flightDist) * 0.38;
+              ringsState.left.isStriking = true;
+            } else {
+              // Rapid magnetic pull-back when arm retracts
+              const dropSpeed = Math.max(28, (ringsState.left.flightDist - desiredDistL) * 0.48);
+              ringsState.left.flightDist = Math.max(0, ringsState.left.flightDist - dropSpeed);
+              if (ringsState.left.flightDist <= 8) {
+                ringsState.left.flightDist = 0.0;
+                if (wasStrikingL) {
+                  ringsState.left.isStriking = false;
+                  playRingClangSFX(1.35);
+                  showQiToast("⚡ LEFT 5 RINGS: SNAPPED BACK TO WRIST!");
+                }
               }
             }
           }
 
-          // --- RIGHT HAND PULL-BACK UPDATE ---
-          if (ringsState.right.isStriking) {
-            if (reach3dR > ringsState.right.peakReach) {
-              ringsState.right.peakReach = reach3dR;
-            }
-
-            const isPullingBackR = (reachVelR < -40) || (forwardDeltaZR < -8) || (reach3dR < ringsState.right.peakReach - 18) || (extRatioR < 0.65);
-
-            if (isPullingBackR) {
-              ringsState.right.isRetracting = true;
-            }
-
-            if (ringsState.right.isRetracting) {
-              const returnSpeed = Math.max(45, Math.abs(reachVelR) * 0.16);
-              ringsState.right.flightDist = Math.max(0, ringsState.right.flightDist - returnSpeed);
-
-              if (ringsState.right.flightDist <= 10) {
-                ringsState.right.flightDist = 0.0;
-                ringsState.right.isStriking = false;
-                ringsState.right.isRetracting = false;
-                ringsState.right.peakReach = 0.0;
-                playRingClangSFX(1.4);
-                showQiToast("⚡ RIGHT 5 RINGS: SNAPPED BACK TO WRIST!");
+          // 5. INDEPENDENT RIGHT HAND 5-RING FLIGHT KINEMATICS (MOVIE 1:1 REACTIVE)
+          if (!ringsState.mandalaShieldActive && !ringsState.right.summonActive) {
+            let desiredDistR = 0;
+            if (extDriveR > 0.05) {
+              desiredDistR = extDriveR * 400;
+              if (thrustVelR > 60 || forwardDeltaZR > 10) {
+                desiredDistR += Math.min(180, Math.max(0, thrustVelR * 0.45 + forwardDeltaZR * 6));
               }
-            } else {
-              const punchRatio = Math.max(0, (extRatioR - 0.58) / 0.32);
-              const targetDist = 120 + punchRatio * 440;
-              ringsState.right.flightDist += (targetDist - ringsState.right.flightDist) * 0.35;
+            }
 
-              ringsState.right.holdFrames = (ringsState.right.holdFrames || 0) + 1;
-              if (ringsState.right.holdFrames > 90) {
-                ringsState.right.isRetracting = true;
+            const wasStrikingR = ringsState.right.flightDist > 15;
+            if (desiredDistR > ringsState.right.flightDist) {
+              ringsState.right.flightDist += (desiredDistR - ringsState.right.flightDist) * 0.38;
+              ringsState.right.isStriking = true;
+            } else {
+              const dropSpeed = Math.max(28, (ringsState.right.flightDist - desiredDistR) * 0.48);
+              ringsState.right.flightDist = Math.max(0, ringsState.right.flightDist - dropSpeed);
+              if (ringsState.right.flightDist <= 8) {
+                ringsState.right.flightDist = 0.0;
+                if (wasStrikingR) {
+                  ringsState.right.isStriking = false;
+                  playRingClangSFX(1.35);
+                  showQiToast("⚡ RIGHT 5 RINGS: SNAPPED BACK TO WRIST!");
+                }
               }
             }
           }
@@ -3754,13 +3695,14 @@
             }
           }
 
-          const posePromise = pose.send({ image: trackCanvas });
-          let handsPromise = Promise.resolve();
+          // Primary zero-lag 60 FPS full-body MoCap tracking
+          await pose.send({ image: trackCanvas });
+
+          // Non-blocking parallel finger articulation refinement
           if (handsDetector && !isHandsProcessing) {
             isHandsProcessing = true;
-            handsPromise = handsDetector.send({ image: trackCanvas }).catch(e => {}).finally(() => { isHandsProcessing = false; });
+            handsDetector.send({ image: trackCanvas }).catch(() => {}).finally(() => { isHandsProcessing = false; });
           }
-          await Promise.allSettled([posePromise, handsPromise]);
         } catch(err) {
           // Gracefully skip dropped frames
         }
