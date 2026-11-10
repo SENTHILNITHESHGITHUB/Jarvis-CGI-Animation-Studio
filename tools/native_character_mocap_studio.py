@@ -297,7 +297,26 @@ class NativeCharacterMoCapStudio:
                     sp = cv2.imread(os.path.join(sprites_dir, fname), cv2.IMREAD_UNCHANGED)
                     if sp is not None:
                         self.houshu_sprites[key] = sp
-        print(f"[*] Loaded {len(self.houshu_sprites)} photorealistic Hou Shu sprites from character-asset-kit.")
+
+        # Load Articulated Skeletal Rig Parts for Continuous Motion
+        self.rig_parts = {}
+        rig_dir = r"C:\Users\SVNITHESHPC\Downloads\AI_VFX_Realtime_Suite\assets\houshu_rig"
+        if os.path.exists(rig_dir):
+            for rname in ["head", "torso", "arm_l_up", "arm_l_low", "arm_r_up", "arm_r_low", "skirt", "boots"]:
+                # Match both with and without suffix
+                target_f = f"{rname}.png"
+                if not os.path.exists(os.path.join(rig_dir, target_f)):
+                    if rname == "arm_l_up": target_f = "arm_l_upper.png"
+                    elif rname == "arm_l_low": target_f = "arm_l_forearm.png"
+                    elif rname == "arm_r_up": target_f = "arm_r_upper.png"
+                    elif rname == "arm_r_low": target_f = "arm_r_forearm.png"
+                fpath = os.path.join(rig_dir, target_f)
+                if os.path.exists(fpath):
+                    self.rig_parts[rname] = cv2.imread(fpath, cv2.IMREAD_UNCHANGED)
+
+        # Motion Mode: 'CONTINUOUS' (Continuous Skeletal Rig) vs 'SPRITE'
+        self.rig_mode = 'CONTINUOUS'
+        print(f"[*] Loaded {len(self.houshu_sprites)} sprites & {len(self.rig_parts)} rig parts for continuous motion.")
         self.recorded_frames = []
 
         # Kinetic / Stance Detection
@@ -606,6 +625,132 @@ class NativeCharacterMoCapStudio:
         canvas_roi = canvas[dst_y1:dst_y2, dst_x1:dst_x2]
         canvas[dst_y1:dst_y2, dst_x1:dst_x2] = (rgb * alpha + canvas_roi * (1.0 - alpha)).astype(np.uint8)
 
+    def draw_textured_bone(self, canvas, sprite, p1, p2, pivot_pct=(0.5, 0.05), end_pct=(0.5, 0.95), width_scale=1.0):
+        """Renders an articulated limb sprite stretched, rotated, and positioned between joint p1 and p2"""
+        if sprite is None:
+            return
+        sh, sw = sprite.shape[:2]
+        vx = p2[0] - p1[0]
+        vy = p2[1] - p1[1]
+        target_len = math.hypot(vx, vy)
+        if target_len < 2.0:
+            return
+        target_angle = math.atan2(vy, vx)
+
+        src_p1 = np.array([sw * pivot_pct[0], sh * pivot_pct[1]], dtype=np.float32)
+        src_p2 = np.array([sw * end_pct[0], sh * end_pct[1]], dtype=np.float32)
+        src_v = src_p2 - src_p1
+        src_len = np.linalg.norm(src_v)
+        if src_len < 1.0:
+            return
+        src_angle = math.atan2(src_v[1], src_v[0])
+
+        scale_y = target_len / src_len
+        scale_x = scale_y * width_scale
+        rot_angle = target_angle - src_angle
+
+        cos_a = math.cos(rot_angle)
+        sin_a = math.sin(rot_angle)
+
+        M = np.zeros((2, 3), dtype=np.float32)
+        M[0, 0] = cos_a * scale_x
+        M[0, 1] = -sin_a * scale_y
+        M[1, 0] = sin_a * scale_x
+        M[1, 1] = cos_a * scale_y
+
+        offset = np.array(p1, dtype=np.float32) - (M[:, :2] @ src_p1)
+        M[:, 2] = offset
+
+        ch, cw = canvas.shape[:2]
+        warped = cv2.warpAffine(sprite, M, (cw, ch), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0, 0))
+
+        nz_y, nz_x = np.nonzero(warped[:, :, 3])
+        if len(nz_y) == 0:
+            return
+        min_y, max_y = max(0, int(np.min(nz_y))), min(ch, int(np.max(nz_y) + 1))
+        min_x, max_x = max(0, int(np.min(nz_x))), min(cw, int(np.max(nz_x) + 1))
+        if max_y <= min_y or max_x <= min_x:
+            return
+
+        w_rgb = warped[min_y:max_y, min_x:max_x, :3]
+        w_alpha = (warped[min_y:max_y, min_x:max_x, 3].astype(np.float32) / 255.0)[:, :, np.newaxis]
+        roi_canvas = canvas[min_y:max_y, min_x:max_x]
+
+        canvas[min_y:max_y, min_x:max_x] = (w_rgb * w_alpha + roi_canvas * (1.0 - w_alpha)).astype(np.uint8)
+
+    def render_houshu_continuous_rig(self, canvas, joints, t_curr):
+        """Continuously actuates Hou Shu's articulated limbs at 60 FPS directly from your real-time joint angles"""
+        if not self.rig_parts:
+            # Fallback to sprite if rig parts missing
+            self.render_houshu_kinematic(canvas, joints, t_curr)
+            return
+
+        # Project 3D joints to 2D screen coordinates
+        p_nose = self.cam3d.project(joints[0])
+        p_sh_l = self.cam3d.project(joints[11])
+        p_sh_r = self.cam3d.project(joints[12])
+        p_el_l = self.cam3d.project(joints[13])
+        p_el_r = self.cam3d.project(joints[14])
+        p_wr_l = self.cam3d.project(joints[15])
+        p_wr_r = self.cam3d.project(joints[16])
+        p_hip_l = self.cam3d.project(joints[23])
+        p_hip_r = self.cam3d.project(joints[24])
+        p_kn_l = self.cam3d.project(joints[25])
+        p_kn_r = self.cam3d.project(joints[26])
+        p_ank_l = self.cam3d.project(joints[27])
+        p_ank_r = self.cam3d.project(joints[28])
+
+        # Anatomical midpoints
+        p_mid_sh = ((p_sh_l[0] + p_sh_r[0]) // 2, (p_sh_l[1] + p_sh_r[1]) // 2)
+        p_mid_hip = ((p_hip_l[0] + p_hip_r[0]) // 2, (p_hip_l[1] + p_hip_r[1]) // 2)
+        p_neck = (p_mid_sh[0], p_mid_sh[1] - 10)
+        
+        # Head vector (pointing from neck through nose to top of crown)
+        head_dx = p_nose[0] - p_neck[0]
+        head_dy = p_nose[1] - p_neck[1]
+        p_head_top = (p_neck[0] + head_dx * 2, p_neck[1] + head_dy * 2)
+
+        # Ground contact shadow beneath character
+        avg_foot_y = max(p_ank_l[1], p_ank_r[1], int(canvas.shape[0] * 0.90))
+        shadow_center = (p_mid_hip[0], avg_foot_y - 8)
+        sh_width = max(80, abs(p_sh_r[0] - p_sh_l[0]) * 2)
+        cv2.ellipse(canvas, shadow_center, (sh_width // 2, 14), 0, 0, 360, (20, 22, 28), -1, cv2.LINE_AA)
+
+        # 1. Lower Robe Skirt & Boots (Back Layer)
+        skirt_bottom = (p_mid_hip[0], avg_foot_y - 25)
+        self.draw_textured_bone(canvas, self.rig_parts.get("skirt"), p_mid_hip, skirt_bottom, 
+                                pivot_pct=(0.5, 0.05), end_pct=(0.5, 0.95), width_scale=1.1)
+        self.draw_textured_bone(canvas, self.rig_parts.get("boots"), skirt_bottom, (p_mid_hip[0], avg_foot_y), 
+                                pivot_pct=(0.5, 0.15), end_pct=(0.5, 0.9), width_scale=1.0)
+
+        # 2. Torso (Cross Collar, Silk Robe Chest & Waist Belt)
+        self.draw_textured_bone(canvas, self.rig_parts.get("torso"), p_neck, p_mid_hip, 
+                                pivot_pct=(0.5, 0.05), end_pct=(0.5, 0.95), width_scale=1.05)
+
+        # 3. Continuous Left Arm (Upper Arm & Forearm continuously bending at elbow)
+        self.draw_textured_bone(canvas, self.rig_parts.get("arm_l_up"), p_sh_l, p_el_l, 
+                                pivot_pct=(0.5, 0.1), end_pct=(0.5, 0.9), width_scale=1.15)
+        self.draw_textured_bone(canvas, self.rig_parts.get("arm_l_low"), p_el_l, p_wr_l, 
+                                pivot_pct=(0.5, 0.1), end_pct=(0.5, 0.9), width_scale=1.15)
+
+        # 4. Continuous Right Arm (Upper Arm & Forearm continuously bending at elbow)
+        self.draw_textured_bone(canvas, self.rig_parts.get("arm_r_up"), p_sh_r, p_el_r, 
+                                pivot_pct=(0.5, 0.1), end_pct=(0.5, 0.9), width_scale=1.15)
+        self.draw_textured_bone(canvas, self.rig_parts.get("arm_r_low"), p_el_r, p_wr_r, 
+                                pivot_pct=(0.5, 0.1), end_pct=(0.5, 0.9), width_scale=1.15)
+
+        # 5. Articulated Head (Face, Jade Crown & Hair Bun rotating with neck)
+        self.draw_textured_bone(canvas, self.rig_parts.get("head"), p_neck, p_head_top, 
+                                pivot_pct=(0.5, 0.9), end_pct=(0.5, 0.1), width_scale=1.0)
+
+        # Continuous MoCap Mode Telemetry Badge
+        cv2.rectangle(canvas, (p_mid_hip[0] - 150, p_head_top[1] - 40), 
+                      (p_mid_hip[0] + 150, p_head_top[1] - 12), (15, 18, 24), -1)
+        cv2.rectangle(canvas, (p_mid_hip[0] - 150, p_head_top[1] - 40), 
+                      (p_mid_hip[0] + 150, p_head_top[1] - 12), (0, 255, 120), 1)
+        cv2.putText(canvas, "CONTINUOUS SKELETAL RIG: ACTIVE", (p_mid_hip[0] - 140, p_head_top[1] - 20), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.44, (0, 255, 120), 1, cv2.LINE_AA)
+
     def render_houshu_kinematic(self, canvas, joints, t_curr):
         # Kinematically maps 33 MediaPipe joints to Hou Shu photorealistic poses from character-asset-kit
         if not self.houshu_sprites:
@@ -711,9 +856,13 @@ class NativeCharacterMoCapStudio:
 
     def render_character(self, canvas, joints, t_curr):
         """Renders 3D Character Rig with full volumetric anatomy, clothing, and anime hair"""
-        if self.char_idx == 1 and self.houshu_sprites:
-            # Render Photorealistic Hou Shu from character-asset-kit
-            self.render_houshu_kinematic(canvas, joints, t_curr)
+        if self.char_idx == 1:
+            if self.rig_mode == 'CONTINUOUS' and self.rig_parts:
+                # Render Full Continuous Skeletal Rig (Fluid Joint Motions)
+                self.render_houshu_continuous_rig(canvas, joints, t_curr)
+            elif self.houshu_sprites:
+                # Render Sprite Matching
+                self.render_houshu_kinematic(canvas, joints, t_curr)
             return
 
         # Apply Turntable Rotation if active
@@ -1004,7 +1153,7 @@ class NativeCharacterMoCapStudio:
                         (280, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 240, 255), 1, cv2.LINE_AA)
 
         # Bottom Shortcut Deck
-        deck_text = "[1-5] Characters | [C] Sheet Preview | [V] View | [B] Stage | [O] 360 Orbit | [A] Aura | [S] Export | [Q] Quit"
+        deck_text = "[1-5] Characters | [R] Rig/Sprite Mode | [C] Sheet | [V] View | [B] Stage | [O] 360 Orbit | [Q] Quit"
         cv2.rectangle(canvas, (16, h - 46), (w - 16, h - 16), (15, 15, 20), -1)
         cv2.rectangle(canvas, (16, h - 46), (w - 16, h - 16), (60, 60, 70), 1)
         cv2.putText(canvas, deck_text, (26, h - 26), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (200, 220, 240), 1, cv2.LINE_AA)
@@ -1058,6 +1207,12 @@ class NativeCharacterMoCapStudio:
         # HUD Toggle [H]
         elif key in [ord('h'), ord('H')]:
             self.show_hud = not self.show_hud
+
+        # Toggle Continuous Skeletal Rig vs Sprite Match [R]
+        elif key in [ord('r'), ord('R')]:
+            self.rig_mode = 'SPRITE' if self.rig_mode == 'CONTINUOUS' else 'CONTINUOUS'
+            print(f"[*] Hou Shu Motion Mode: {self.rig_mode}")
+            threading.Thread(target=lambda: winsound.Beep(1200, 50), daemon=True).start()
 
         # Save Character Asset Kit Turnaround Sheet [S]
         elif key in [ord('s'), ord('S')]:
