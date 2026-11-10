@@ -265,11 +265,11 @@ class NativeCharacterMoCapStudio:
         # 1: Goku SSJ, 2: Vegeta, 3: Cyber Warrior, 4: BlindBox Chibi, 5: GLB 3D
         self.char_idx = 1
         self.char_names = {
-            1: "3D GOKU (SUPER SAIYAN MASTER)",
-            2: "3D VEGETA (ROYAL SAIYAN PRINCE)",
-            3: "3D CYBER WARRIOR (NANOTECH)",
-            4: "3D BLINDBOX CHIBI (GATES-3D-V1)",
-            5: "3D DORAEMON (POLYGONAL MESH)"
+            1: "KR-04 HOU SHU (ANCIENT GUFENG SCHOLAR - CHARACTER ASSET KIT)",
+            2: "3D GOKU (SUPER SAIYAN MASTER)",
+            3: "3D VEGETA (ROYAL SAIYAN PRINCE)",
+            4: "3D CYBER WARRIOR (NANOTECH)",
+            5: "3D BLINDBOX CHIBI (GATES-BLINDBOX3D-V1)"
         }
 
         # 360° Turntable Orbit
@@ -281,6 +281,11 @@ class NativeCharacterMoCapStudio:
         self.show_aura = True
         self.show_hud = True
         self.recording_take = False
+        self.show_sheet_preview = False
+        self.sheet_img = None
+        sheet_path = r"C:\Users\SVNITHESHPC\.gemini\antigravity\brain\972199e1-0395-45a5-b415-be1edfa58c26\character_asset_kit_showcase_houshu.png"
+        if os.path.exists(sheet_path):
+            self.sheet_img = cv2.imread(sheet_path)
         self.recorded_frames = []
 
         # Kinetic / Stance Detection
@@ -555,6 +560,14 @@ class NativeCharacterMoCapStudio:
 
         # Character Color Schemes & Styles
         if self.char_idx == 1:
+            # KR-04 HOU SHU (ANCIENT HANFU SCHOLAR - GATES-REALHUMAN-GUFENG-V1)
+            c_hair = (25, 25, 25)        # Sleek Black Hair Bun with Jade Crown
+            c_gi = (248, 247, 246)       # Pure White Silk Flowing Robe (#FAF9F6)
+            c_under = (62, 77, 27)       # Deep Forest Emerald Cross-Collar (#1B4D3E)
+            c_skin = (188, 210, 238)     # Natural Real-Skin Tone (Kodak Portra 400)
+            c_boots = (25, 25, 28)       # Black Traditional Boots & Sash
+            c_aura = (180, 220, 190)     # Subtle Ethereal Bamboo Mint Glow
+        elif self.char_idx == 2:
             # 3D GOKU SUPER SAIYAN
             c_hair = (0, 220, 255)       # Golden Yellow
             c_gi = (0, 105, 235)         # Orange Gi
@@ -677,8 +690,23 @@ class NativeCharacterMoCapStudio:
         head_radius = 0.11 if self.char_idx != 4 else 0.18 # Chibi oversized head
         self.renderer.draw_shaded_sphere(canvas, head_center, radius=head_radius, color=c_skin)
 
-        # 6. Anime Super Saiyan Hair Spikes (Goku / Vegeta)
+        # 6. Character Headpieces & Accoutrements (Jade Crown / Saiyan Hair)
         if self.char_idx == 1:
+            # KR-04 Hou Shu: Traditional Jade Hair Crown (玉冠) & Hairpin
+            crown_center = head_center + np.array([0.0, -0.13, 0.01], dtype=np.float32)
+            # Jade Crown Top Knot (Cylindrical Jade Gem)
+            self.renderer.draw_shaded_limb(canvas, crown_center + np.array([0, 0.03, 0]), 
+                                          crown_center + np.array([0, -0.04, 0]), 
+                                          radius=0.038, color=(160, 215, 175), taper=1.0)
+            # Jade Hairpin traversing the bun horizontally
+            pin_l = crown_center + np.array([-0.075, 0.0, 0.0], dtype=np.float32)
+            pin_r = crown_center + np.array([0.075, 0.0, 0.0], dtype=np.float32)
+            self.renderer.draw_shaded_limb(canvas, pin_l, pin_r, radius=0.008, color=(180, 230, 195), taper=1.0)
+            # Cross-Collar Emerald Edge Accent on Chest
+            collar_left = mid_sh + (sh_l - mid_sh) * 0.45
+            collar_cross = spine_mid + (sh_r - mid_sh) * 0.25
+            self.renderer.draw_shaded_limb(canvas, collar_left, collar_cross, radius=0.022, color=c_under, taper=1.0)
+        elif self.char_idx == 2:
             # Goku Super Saiyan: 7 iconic upward flared golden hair spikes
             spike_offsets = [
                 (np.array([0.0, -0.26, 0.04]), 0.08),     # Crown central spike
@@ -773,6 +801,19 @@ class NativeCharacterMoCapStudio:
                 self.render_character(cinema_canvas, joints, t_curr)
 
             self.renderer = old_renderer
+            if self.show_sheet_preview and self.sheet_img is not None:
+                # Scale and center character sheet preview
+                sh_h, sh_w = self.sheet_img.shape[:2]
+                scale = min(680.0 / sh_h, 1200.0 / sh_w)
+                disp_w = int(sh_w * scale)
+                disp_h = int(sh_h * scale)
+                sheet_resized = cv2.resize(self.sheet_img, (disp_w, disp_h))
+                x_off = (1280 - disp_w) // 2
+                y_off = (720 - disp_h) // 2
+                # Dim background
+                cinema_canvas = (cinema_canvas * 0.25).astype(np.uint8)
+                cinema_canvas[y_off:y_off+disp_h, x_off:x_off+disp_w] = sheet_resized
+                cv2.rectangle(cinema_canvas, (x_off, y_off), (x_off+disp_w, y_off+disp_h), (0, 240, 255), 2)
             return cinema_canvas
 
     def draw_hud(self, canvas, joints, t_curr):
@@ -800,7 +841,7 @@ class NativeCharacterMoCapStudio:
                         (280, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 240, 255), 1, cv2.LINE_AA)
 
         # Bottom Shortcut Deck
-        deck_text = "[1-5] Characters | [V] View | [B] Stage | [O] 360 Orbit | [A] Aura | [S] Export Sheet | [T] Record | [Q] Quit"
+        deck_text = "[1-5] Characters | [C] Sheet Preview | [V] View | [B] Stage | [O] 360 Orbit | [A] Aura | [S] Export | [Q] Quit"
         cv2.rectangle(canvas, (16, h - 46), (w - 16, h - 16), (15, 15, 20), -1)
         cv2.rectangle(canvas, (16, h - 46), (w - 16, h - 16), (60, 60, 70), 1)
         cv2.putText(canvas, deck_text, (26, h - 26), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (200, 220, 240), 1, cv2.LINE_AA)
@@ -836,6 +877,12 @@ class NativeCharacterMoCapStudio:
         elif key in [ord('o'), ord('O')]:
             self.turntable_active = not self.turntable_active
             print(f"[*] 360° Turntable Orbit: {self.turntable_active}")
+
+        # Character Sheet Preview Toggle [C]
+        elif key in [ord('c'), ord('C')]:
+            self.show_sheet_preview = not self.show_sheet_preview
+            print(f"[*] Character Asset Kit Sheet Preview: {self.show_sheet_preview}")
+            threading.Thread(target=lambda: winsound.Beep(1350, 60), daemon=True).start()
 
         # Skeleton Overlay Toggle [M]
         elif key in [ord('m'), ord('M')]:
