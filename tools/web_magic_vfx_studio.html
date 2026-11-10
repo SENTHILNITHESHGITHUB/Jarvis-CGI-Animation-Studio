@@ -275,6 +275,7 @@
       <div class="badge badge-interactive" id="btnCheckReplay" style="background:rgba(245, 158, 11, 0.25); border-color:rgba(245, 158, 11, 0.85); color:#fde047; font-weight:800;" title="Check / Inspect Recorded Take in Screening Room (Hotkey [R])">▶️ REPLAY TAKE [R]</div>
       <div class="badge badge-interactive" id="btnLoadReplay" style="background:rgba(99, 102, 241, 0.25); border-color:rgba(99, 102, 241, 0.85); color:#c7d2fe; font-weight:800;" title="Load Replay Video from Phone / Cam / Fan File">📂 LOAD REPLAY</div>
       <div class="badge badge-interactive" id="btnFanFilter" style="background:rgba(14, 165, 233, 0.2); border-color:rgba(14, 165, 233, 0.7); color:#38bdf8; font-weight:800;" title="OmniRoute Rotary & Ceiling Fan Noise Filter">🌀 FAN: CLEAN</div>
+      <div class="badge badge-interactive" id="btnActiveGesture" style="background:rgba(234, 88, 12, 0.25); border-color:rgba(234, 88, 12, 0.85); color:#fb923c; font-weight:800;" title="Live Recognized Hand & Body Gesture VFX Status (Hotkey [J] for Spellbook)">🥋 GESTURE: READY [J]</div>
       <div class="badge" id="hudSpeed">SPEED: 0 PX/S</div>
       <div class="badge" id="hudStance">BRAHMĀSTRA AGNYĀSTRA</div>
       <div class="badge" id="hudFps">FPS: 60</div>
@@ -429,6 +430,140 @@
     </div>
   </div>
 
+  <!-- Hollywood Master Gesture Spellbook Modal Overlay -->
+  <div id="gestureModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:160; background:rgba(6, 9, 18, 0.94); backdrop-filter:blur(28px); flex-direction:column; align-items:center; justify-content:center; padding:24px; box-sizing:border-box;">
+    <div style="background:linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(10, 14, 26, 0.99)); border:1px solid rgba(234, 88, 12, 0.65); border-radius:22px; box-shadow:0 25px 70px rgba(0,0,0,0.95), 0 0 50px rgba(234, 88, 12, 0.25); width:94vw; max-width:1180px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden;">
+      
+      <!-- Modal Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 28px; border-bottom:1px solid rgba(234, 88, 12, 0.3); background:rgba(0,0,0,0.35);">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span style="font-size:28px;">🥋</span>
+          <div>
+            <div style="font-size:17px; font-weight:900; letter-spacing:1px; color:#fff; text-transform:uppercase;">HOLLYWOOD VFX GESTURE SPELLBOOK // MASTER GRIMOIRE</div>
+            <div style="font-size:11px; font-weight:700; color:#fb923c; letter-spacing:0.5px;">60 FPS REAL-TIME HAND, BODY & FACIAL EXPRESSION RECOGNITION</div>
+          </div>
+        </div>
+        <button id="btnGestureClose" style="background:rgba(239, 68, 68, 0.25); border:1px solid rgba(239, 68, 68, 0.7); color:#fca5a5; font-weight:800; font-size:14px; width:36px; height:36px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+
+      <!-- Spells Grid Container -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; padding:24px; overflow-y:auto; flex:1;">
+        
+        <!-- Spell Card 1: Rasengan -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(0, 240, 255, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">🌀</span>
+            <span style="background:rgba(0, 240, 255, 0.15); border:1px solid #00f0ff; color:#38bdf8; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">NARUTO</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">SPIRAL RASENGAN</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#38bdf8;">Hand Posture:</strong> Open Dragon Palm held cupped in front of chest/body. Concentrates spinning chakra vortex filaments at 1200 RPM!
+          </div>
+          <button class="btn-test-spell" data-spell="RASENGAN" style="margin-top:auto; background:rgba(0, 240, 255, 0.2); border:1px solid #00f0ff; color:#e0f2fe; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TEST RASENGAN</button>
+        </div>
+
+        <!-- Spell Card 2: Chidori -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(168, 85, 247, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">⚡</span>
+            <span style="background:rgba(168, 85, 247, 0.15); border:1px solid #a855f7; color:#c084fc; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">KAKASHI / SASUKE</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">THOUSAND BIRDS CHIDORI</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#c084fc;">Hand Posture:</strong> Downward Tiger Claw grip with tense fingers. Emits 10-14 violent branching high-voltage lightning arcs!
+          </div>
+          <button class="btn-test-spell" data-spell="CHIDORI" style="margin-top:auto; background:rgba(168, 85, 247, 0.2); border:1px solid #a855f7; color:#f3e8ff; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TEST CHIDORI</button>
+        </div>
+
+        <!-- Spell Card 3: Iron Man Repulsor -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(56, 189, 248, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">💥</span>
+            <span style="background:rgba(56, 189, 248, 0.15); border:1px solid #38bdf8; color:#38bdf8; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">IRON MAN</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">MARK 85 REPULSOR BEAM</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#38bdf8;">Hand Posture:</strong> Flat open palm pushed forward directly at camera. Concentric shockwave lens flare with holographic Stark targeting!
+          </div>
+          <button class="btn-test-spell" data-spell="REPULSOR" style="margin-top:auto; background:rgba(56, 189, 248, 0.2); border:1px solid #38bdf8; color:#e0f2fe; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TEST REPULSOR</button>
+        </div>
+
+        <!-- Spell Card 4: Doctor Strange Eldritch Mandala -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(245, 158, 11, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">✨</span>
+            <span style="background:rgba(245, 158, 11, 0.15); border:1px solid #f59e0b; color:#fde047; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">DOCTOR STRANGE</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">TAO ELDRITCH MANDALA</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#fde047;">Hand Posture:</strong> Taoist Sword Mudra (Index + Middle extended together, Ring & Pinky curled). Sacred geometry runes & raining sparks!
+          </div>
+          <button class="btn-test-spell" data-spell="SWORD_MUDRA" style="margin-top:auto; background:rgba(245, 158, 11, 0.2); border:1px solid #f59e0b; color:#fef3c7; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TEST MANDALA</button>
+        </div>
+
+        <!-- Spell Card 5: Indian 2 Varma Kalai -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(239, 68, 68, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">🩸</span>
+            <span style="background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; color:#fca5a5; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">INDIAN 2</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">SENAPATHY VARMA KALAI</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#fca5a5;">Hand Posture:</strong> Rigid Two-Finger / Index Lethal Point thrust. Crimson piercing laser filament + Tamil anatomical nerve lock reticle!
+          </div>
+          <button class="btn-test-spell" data-spell="VARMA_KALAI" style="margin-top:auto; background:rgba(239, 68, 68, 0.2); border:1px solid #ef4444; color:#fee2e2; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TEST VARMA KALAI</button>
+        </div>
+
+        <!-- Spell Card 6: Goku Kamehameha -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(59, 130, 246, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">⚡</span>
+            <span style="background:rgba(59, 130, 246, 0.15); border:1px solid #3b82f6; color:#93c5fd; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">DRAGON BALL Z</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">COSMIC KAMEHAMEHA</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#93c5fd;">Dual Hand Posture:</strong> Cup both hands at hip to charge orb, then thrust forward at speed > 420 px/s to detonate cosmic beam!
+          </div>
+          <button class="btn-test-spell" data-spell="KAMEHAMEHA" style="margin-top:auto; background:rgba(59, 130, 246, 0.2); border:1px solid #3b82f6; color:#eff6ff; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ DETONATE BLAST</button>
+        </div>
+
+        <!-- Spell Card 7: Super Saiyan Roar & Aura -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(245, 158, 11, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">🔥</span>
+            <span style="background:rgba(245, 158, 11, 0.15); border:1px solid #f59e0b; color:#fde047; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">EXPRESSION MOCAP</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">SUPER SAIYAN BATTLE ROAR</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#fde047;">Face Expression:</strong> Open mouth wide (jawOpen > 0.48) in a battle cry. Ascending golden flame aura + 360° ki blast shockwave!
+          </div>
+          <button class="btn-test-spell" data-spell="ROAR_AURA" style="margin-top:auto; background:rgba(245, 158, 11, 0.2); border:1px solid #f59e0b; color:#fef3c7; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TEST ROAR AURA</button>
+        </div>
+
+        <!-- Spell Card 8: Shang-Chi Mandala Shield -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(234, 88, 12, 0.4); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">🛡️</span>
+            <span style="background:rgba(234, 88, 12, 0.15); border:1px solid #ea580c; color:#fb923c; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">SHANG-CHI</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">10-RING DRAGON SHIELD</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#fb923c;">Dual Hand Posture:</strong> Touch wrists/palms together in front of chest (Hotkey [X]). Rings form concentric counter-rotating barrier!
+          </div>
+          <button class="btn-test-spell" data-spell="MANDALA_SHIELD" style="margin-top:auto; background:rgba(234, 88, 12, 0.2); border:1px solid #ea580c; color:#fff7ed; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TOGGLE SHIELD (X)</button>
+        </div>
+
+      </div>
+
+      <!-- Footer Note -->
+      <div style="padding:14px 28px; background:rgba(0,0,0,0.4); border-top:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#94a3b8;">
+        <span>Press <strong style="color:#fff;">[J]</strong> to toggle Spellbook • All gestures track with 42-joint finger precision</span>
+        <button id="btnGestureDismiss" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#e2e8f0; font-weight:700; font-size:11px; padding:6px 16px; border-radius:6px; cursor:pointer;">RETURN TO STUDIO (ESC)</button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Interactive Stance Dock -->
   <div id="omniDirectorToast" style="display:none; position:fixed; bottom:82px; left:50%; transform:translateX(-50%); background:rgba(15, 23, 42, 0.92); border:1px solid rgba(165, 180, 252, 0.5); color:#e0e7ff; padding:9px 22px; border-radius:30px; font-size:12px; font-weight:700; z-index:100; backdrop-filter:blur(16px); box-shadow:0 12px 35px rgba(99,102,241,0.35); gap:8px; align-items:center;">
     <span style="font-size:14px;">🎬</span>
@@ -442,6 +577,11 @@
     <button class="dock-pill" id="btnSummonRight">⚡ WEAR RIGHT (2)</button>
     <button class="dock-pill pill-fire" id="btnShield">🛡️ MANDALA SHIELD (X)</button>
     <button class="dock-pill" id="btnRingStyle">🎨 QI: TA LO GOLD (Q)</button>
+    <button class="dock-pill" id="btnPillRasengan" style="border-color:#00f0ff; color:#00f0ff;" title="Naruto Rasengan Spiral Chakra Sphere">🌀 RASENGAN</button>
+    <button class="dock-pill" id="btnPillChidori" style="border-color:#c084fc; color:#c084fc;" title="Kakashi Chidori Lightning Blade">⚡ CHIDORI</button>
+    <button class="dock-pill" id="btnPillRepulsor" style="border-color:#38bdf8; color:#38bdf8;" title="Iron Man Mark 85 Repulsor Beam">💥 REPULSOR</button>
+    <button class="dock-pill" id="btnPillVarma" style="border-color:#ef4444; color:#f87171;" title="Indian 2 Senapathy Varma Kalai Lethal Strike">🩸 VARMA KALAI</button>
+    <button class="dock-pill" id="btnPillAuraRoar" style="border-color:#f59e0b; color:#fde047;" title="Super Saiyan Ki Aura Burst & Battle Roar">🔥 ROAR AURA</button>
     <button class="dock-pill" data-vfx="AUTO">✨ AUTO AI</button>
   </div>
   </div>
@@ -1400,6 +1540,117 @@
       } catch(e) {}
     }
 
+    // High-Energy Kamehameha & Cosmic Beam Blast Audio
+    function playBlastAudio() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.65);
+        gain.gain.setValueAtTime(0.55, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.66);
+      } catch(e) {}
+    }
+
+    // Naruto Rasengan Swirling High-Frequency Cyclone Audio
+    function playRasenganAudio() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(750 + Math.sin(now * 25) * 120, now);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.23);
+      } catch(e) {}
+    }
+
+    // Kakashi Chidori 1000 Birds High-Voltage Lightning Audio
+    function playChidoriAudio() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1200 + Math.random() * 800, now);
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.17);
+      } catch(e) {}
+    }
+
+    // Iron Man Mark 85 Repulsor Concussive Blast Audio
+    function playRepulsorAudio() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(920, now);
+        osc.frequency.exponentialRampToValueAtTime(90, now + 0.28);
+        gain.gain.setValueAtTime(0.40, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.29);
+      } catch(e) {}
+    }
+
+    // Indian 2 Senapathy Varma Kalai Lethal Nerve Strike Audio
+    function playVarmaAudio() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(2400, now);
+        osc.frequency.exponentialRampToValueAtTime(450, now + 0.22);
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.23);
+      } catch(e) {}
+    }
+
+    // Super Saiyan Battle Roar & Ki Flame Audio
+    function playAuraRoarAudio() {
+      if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(85 + Math.sin(now * 12) * 25, now);
+        gain.gain.setValueAtTime(0.28, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      } catch(e) {}
+    }
+
     // -------------------------------------------------------------------------
     // 5. DOCTOR STRANGE COUNTER-ROTATING ELDRITCH MANDALAS
     // -------------------------------------------------------------------------
@@ -2316,7 +2567,10 @@
       bendDegrees: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
       gesture: 'MARTIAL GUARD',
       gestureCode: 'GUARD',
-      fistRatio: 0
+      fistRatio: 0,
+      vfxSpell: 'NONE',
+      spellRatio: 0.0,
+      overrideSpell: null
     };
     const handJointsR = {
       detected: false,
@@ -2325,8 +2579,16 @@
       bendDegrees: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
       gesture: 'MARTIAL GUARD',
       gestureCode: 'GUARD',
-      fistRatio: 0
+      fistRatio: 0,
+      vfxSpell: 'NONE',
+      spellRatio: 0.0,
+      overrideSpell: null
     };
+
+    // Global Master Gesture State
+    let isGestureModalOpen = false;
+    let globalActiveGesture = 'READY';
+    let globalOverrideAura = false;
 
     function calcJointAngle(A, B, C) {
       if (!A || !B || !C) return 180;
@@ -2376,20 +2638,23 @@
 
       const dThumbIndex = Math.hypot(pts[4].x - pts[8].x, pts[4].y - pts[8].y);
 
-      if (avgCurl > 0.65) {
-        return { name: "CLOSED FIST", code: "FIST", ratio: avgCurl };
-      } else if (avgCurl < 0.25) {
-        return { name: "OPEN DRAGON PALM", code: "OPEN_PALM", ratio: avgCurl };
-      } else if (isIndexStraight && isMidStraight && isRingCurled && isPinkyCurled) {
-        return { name: "TAOIST SWORD MUDRA", code: "SWORD_MUDRA", ratio: avgCurl };
-      } else if (dThumbIndex < 28 && bends.middle.ratio < 0.45) {
-        return { name: "QI PINCH RETICLE", code: "PINCH", ratio: avgCurl };
-      } else if (avgCurl >= 0.35 && avgCurl <= 0.65) {
-        return { name: "TIGER / DRAGON CLAW", code: "DRAGON_CLAW", ratio: avgCurl };
+      if (isIndexStraight && isMidStraight && isRingCurled && isPinkyCurled) {
+        return { name: "TAOIST SWORD MUDRA", code: "SWORD_MUDRA", spell: "SWORD_MUDRA", ratio: avgCurl };
       } else if (isIndexStraight && !isMidStraight && isRingCurled) {
-        return { name: "DIRECTOR POINT", code: "POINT", ratio: avgCurl };
+        return { name: "VARMA KALAI LETHAL STRIKE", code: "POINT", spell: "VARMA_KALAI", ratio: avgCurl };
+      } else if (avgCurl > 0.68) {
+        return { name: "CLOSED FIST", code: "FIST", spell: "FIST", ratio: avgCurl };
+      } else if (avgCurl < 0.22) {
+        // Distinguish Repulsor (palm flat forward) vs Rasengan
+        return { name: "OPEN REPULSOR PALM", code: "OPEN_PALM", spell: "REPULSOR", ratio: avgCurl };
+      } else if (avgCurl >= 0.22 && avgCurl < 0.42) {
+        return { name: "SPIRAL CHAKRA PALM", code: "RASENGAN_PALM", spell: "RASENGAN", ratio: avgCurl };
+      } else if (avgCurl >= 0.42 && avgCurl <= 0.68) {
+        return { name: "TIGER CLAW CHIDORI", code: "DRAGON_CLAW", spell: "CHIDORI", ratio: avgCurl };
+      } else if (dThumbIndex < 28 && bends.middle.ratio < 0.45) {
+        return { name: "QI PINCH RETICLE", code: "PINCH", spell: "PINCH", ratio: avgCurl };
       }
-      return { name: "MARTIAL GUARD", code: "GUARD", ratio: avgCurl };
+      return { name: "MARTIAL GUARD", code: "GUARD", spell: "NONE", ratio: avgCurl };
     }
 
     let mocapJoints = {
@@ -3891,6 +4156,329 @@
       }
 
       // -----------------------------------------------------------------------
+      // MASTER VFX GESTURE ENGINE (RASENGAN, CHIDORI, REPULSOR, VARMA, ROAR AURA)
+      // -----------------------------------------------------------------------
+      
+      // A. Super Saiyan Ki Flame Aura & Battle Roar
+      const isJawRoar = (MULTI_PERSON_REGISTRY.p1.expression && MULTI_PERSON_REGISTRY.p1.expression.jawOpen > 0.46);
+      if (isJawRoar || globalOverrideAura) {
+        hudCtx.save();
+        const auraCenter = poseCurrent.spine || { x: cxHalf, y: cyHalf };
+        const sW = Math.hypot(poseCurrent.rs.x - poseCurrent.ls.x, poseCurrent.rs.y - poseCurrent.ls.y) || 200;
+        
+        // Ascending Golden Fire Tongues
+        for (let i = 0; i < 18; i++) {
+          const flameOffset = (i - 9) * (sW * 0.12);
+          const fBaseX = auraCenter.x + flameOffset;
+          const fBaseY = (poseCurrent.lh ? poseCurrent.lh.y : auraCenter.y + 120);
+          const fHeight = sW * (1.2 + 0.4 * Math.sin(timeVal * 12 + i * 1.5));
+          const fTopY = fBaseY - fHeight;
+          const jitterX = Math.sin(timeVal * 15 + i * 2.2) * 14;
+
+          const fGrad = hudCtx.createLinearGradient(fBaseX, fBaseY, fBaseX + jitterX, fTopY);
+          fGrad.addColorStop(0.0, 'rgba(234, 88, 12, 0.0)');
+          fGrad.addColorStop(0.3, 'rgba(245, 158, 11, 0.45)');
+          fGrad.addColorStop(0.8, 'rgba(253, 224, 71, 0.75)');
+          fGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+
+          hudCtx.fillStyle = fGrad;
+          hudCtx.beginPath();
+          hudCtx.moveTo(fBaseX - 25, fBaseY);
+          hudCtx.quadraticCurveTo(fBaseX + jitterX * 1.5, (fBaseY + fTopY) * 0.5, fBaseX + jitterX, fTopY);
+          hudCtx.quadraticCurveTo(fBaseX + jitterX * 0.5, (fBaseY + fTopY) * 0.5, fBaseX + 25, fBaseY);
+          hudCtx.fill();
+        }
+
+        // Concentric Expanding Golden Ki Blast Shockwaves
+        const shockRad = ((timeVal * 240) % 360) + 60;
+        hudCtx.strokeStyle = 'rgba(253, 224, 71, 0.85)';
+        hudCtx.lineWidth = 3.5;
+        hudCtx.shadowColor = '#f59e0b';
+        hudCtx.shadowBlur = 18;
+        hudCtx.beginPath();
+        hudCtx.arc(auraCenter.x, auraCenter.y, shockRad, 0, Math.PI * 2);
+        hudCtx.stroke();
+
+        hudCtx.restore();
+        applyPhotometricLight(auraCenter.x, auraCenter.y, 420, '245, 158, 11', 0.95);
+        playAuraRoarAudio();
+      }
+
+      // B. Left & Right Hand Dynamic VFX Spells
+      const activeHandsList = [
+        { data: handJointsL, wrist: poseCurrent.lw, side: 'L' },
+        { data: handJointsR, wrist: poseCurrent.rw, side: 'R' }
+      ];
+
+      let currentSpellTags = [];
+
+      activeHandsList.forEach(item => {
+        const hData = item.data;
+        const wristPt = item.wrist;
+        const currentSpell = hData.overrideSpell || hData.vfxSpell || 'NONE';
+
+        let anchorX = wristPt.x;
+        let anchorY = wristPt.y;
+        if (hData.detected && hData.points && hData.points.length >= 21) {
+          anchorX = (hData.points[0].x + hData.points[9].x) * 0.5;
+          anchorY = (hData.points[0].y + hData.points[9].y) * 0.5;
+        }
+
+        // Smooth Ramp for Spell Ratio
+        const isSpellActive = (currentSpell !== 'NONE' && currentSpell !== 'GUARD' && currentSpell !== 'FIST');
+        if (isSpellActive) {
+          hData.spellRatio = Math.min(1.0, (hData.spellRatio || 0) + 0.12);
+          currentSpellTags.push(`${item.side}: ${currentSpell}`);
+        } else {
+          hData.spellRatio = Math.max(0.0, (hData.spellRatio || 0) - 0.08);
+        }
+
+        const sRatio = hData.spellRatio;
+        if (sRatio <= 0.02) return;
+
+        hudCtx.save();
+
+        // 1. SPIRAL RASENGAN (Naruto Chakra Vortex)
+        if (currentSpell === 'RASENGAN') {
+          const coreRad = 36 * sRatio;
+          const spin = timeVal * 16.0;
+
+          // Swirling Logarithmic Vortex Spirals
+          for (let s = 0; s < 4; s++) {
+            const angleOffset = s * (Math.PI * 0.5) + spin;
+            hudCtx.strokeStyle = (s % 2 === 0) ? 'rgba(0, 240, 255, 0.88)' : 'rgba(37, 99, 235, 0.75)';
+            hudCtx.lineWidth = 3.5;
+            hudCtx.shadowColor = '#00f0ff';
+            hudCtx.shadowBlur = 16;
+            hudCtx.beginPath();
+            for (let t = 0; t < 25; t++) {
+              const r = (t / 25) * coreRad * 1.35;
+              const theta = angleOffset + (t * 0.28);
+              const px = anchorX + Math.cos(theta) * r;
+              const py = anchorY + Math.sin(theta) * r;
+              if (t === 0) hudCtx.moveTo(px, py);
+              else hudCtx.lineTo(px, py);
+            }
+            hudCtx.stroke();
+          }
+
+          // Blinding White Concentrated Plasma Core
+          const rasGrad = hudCtx.createRadialGradient(anchorX, anchorY, 4, anchorX, anchorY, coreRad);
+          rasGrad.addColorStop(0.0, '#ffffff');
+          rasGrad.addColorStop(0.35, 'rgba(0, 240, 255, 0.95)');
+          rasGrad.addColorStop(0.85, 'rgba(37, 99, 235, 0.55)');
+          rasGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+          hudCtx.fillStyle = rasGrad;
+          hudCtx.beginPath();
+          hudCtx.arc(anchorX, anchorY, coreRad, 0, Math.PI * 2);
+          hudCtx.fill();
+
+          applyPhotometricLight(anchorX, anchorY, 200 * sRatio, '0, 240, 255', 0.95);
+          playRasenganAudio();
+        }
+
+        // 2. THOUSAND BIRDS CHIDORI (Kakashi / Sasuke High-Voltage Lightning Blade)
+        else if (currentSpell === 'CHIDORI') {
+          hudCtx.shadowBlur = 18;
+          hudCtx.shadowColor = '#a855f7';
+
+          // Jagged Electric Bolts connecting Wrist, Knuckles, and Fingertips
+          const ptIndices = [4, 8, 12, 16, 20];
+          ptIndices.forEach(idx => {
+            const tipPt = (hData.detected && hData.points && hData.points[idx]) ? hData.points[idx] : { x: anchorX + (idx - 12) * 8, y: anchorY - 45 };
+            
+            // Draw Main Bolt
+            hudCtx.strokeStyle = '#ffffff';
+            hudCtx.lineWidth = 2.8;
+            hudCtx.beginPath();
+            hudCtx.moveTo(anchorX, anchorY);
+            let curX = anchorX, curY = anchorY;
+            const segments = 5;
+            for (let seg = 1; seg <= segments; seg++) {
+              const u = seg / segments;
+              const targetSegX = anchorX + (tipPt.x - anchorX) * u;
+              const targetSegY = anchorY + (tipPt.y - anchorY) * u;
+              const jitter = (Math.random() - 0.5) * 22;
+              curX = targetSegX + jitter;
+              curY = targetSegY + jitter;
+              hudCtx.lineTo(curX, curY);
+            }
+            hudCtx.stroke();
+
+            // Branching Violet Outer Glow Filament
+            hudCtx.strokeStyle = 'rgba(168, 85, 247, 0.85)';
+            hudCtx.lineWidth = 4.2;
+            hudCtx.beginPath();
+            hudCtx.moveTo(anchorX, anchorY);
+            hudCtx.lineTo(curX + (Math.random() - 0.5) * 28, curY + (Math.random() - 0.5) * 28);
+            hudCtx.stroke();
+          });
+
+          applyPhotometricLight(anchorX, anchorY, 220 * sRatio, '168, 85, 247', 0.98);
+          playChidoriAudio();
+        }
+
+        // 3. MARK 85 REPULSOR BEAM (Iron Man Forward Plasma Flare)
+        else if (currentSpell === 'REPULSOR') {
+          const flareRad = 44 * sRatio;
+          
+          // Concentric Cyan Shockwave Rings
+          hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.85)';
+          hudCtx.lineWidth = 3.0;
+          hudCtx.shadowColor = '#00f0ff';
+          hudCtx.shadowBlur = 18;
+          hudCtx.beginPath();
+          hudCtx.arc(anchorX, anchorY, flareRad * (0.8 + 0.3 * Math.sin(timeVal * 14)), 0, Math.PI * 2);
+          hudCtx.stroke();
+
+          // 4-Pointed Anamorphic Lens Flare
+          hudCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+          hudCtx.lineWidth = 2.5;
+          const flareSpan = flareRad * 2.2;
+          hudCtx.beginPath();
+          hudCtx.moveTo(anchorX - flareSpan, anchorY);
+          hudCtx.lineTo(anchorX + flareSpan, anchorY);
+          hudCtx.moveTo(anchorX, anchorY - flareSpan * 0.75);
+          hudCtx.lineTo(anchorX, anchorY + flareSpan * 0.75);
+          hudCtx.stroke();
+
+          // Blinding Repulsor Core
+          hudCtx.fillStyle = '#ffffff';
+          hudCtx.beginPath();
+          hudCtx.arc(anchorX, anchorY, flareRad * 0.45, 0, Math.PI * 2);
+          hudCtx.fill();
+
+          // Stark Holographic Reticle Overlay
+          hudCtx.font = '10px monospace';
+          hudCtx.fillStyle = '#38bdf8';
+          hudCtx.fillText(`REPULSOR: 100% // LOCKED`, anchorX - 65, anchorY - flareRad - 12);
+
+          applyPhotometricLight(anchorX, anchorY, 230 * sRatio, '0, 240, 255', 1.0);
+          playRepulsorAudio();
+        }
+
+        // 4. TAOIST ELDRITCH MANDALA (Doctor Strange Sacred Geometry)
+        else if (currentSpell === 'SWORD_MUDRA') {
+          const mRadius = 55 * sRatio;
+          const rot1 = timeVal * 2.5;
+          const rot2 = -timeVal * 1.8;
+
+          hudCtx.strokeStyle = 'rgba(245, 158, 11, 0.92)';
+          hudCtx.lineWidth = 2.2;
+          hudCtx.shadowColor = '#ea580c';
+          hudCtx.shadowBlur = 16;
+
+          // Outer Concentric Ring
+          hudCtx.beginPath();
+          hudCtx.arc(anchorX, anchorY, mRadius, 0, Math.PI * 2);
+          hudCtx.stroke();
+
+          // Rotating 12-Pointed Dodecagram Star
+          hudCtx.beginPath();
+          for (let p = 0; p <= 12; p++) {
+            const ang = rot1 + (p * Math.PI / 6);
+            const r = (p % 2 === 0) ? mRadius : (mRadius * 0.65);
+            const px = anchorX + Math.cos(ang) * r;
+            const py = anchorY + Math.sin(ang) * r;
+            if (p === 0) hudCtx.moveTo(px, py);
+            else hudCtx.lineTo(px, py);
+          }
+          hudCtx.closePath();
+          hudCtx.stroke();
+
+          // Counter-Rotating Inner Square
+          hudCtx.strokeStyle = 'rgba(253, 224, 71, 0.95)';
+          hudCtx.beginPath();
+          for (let q = 0; q <= 4; q++) {
+            const ang = rot2 + (q * Math.PI * 0.5);
+            const px = anchorX + Math.cos(ang) * (mRadius * 0.5);
+            const py = anchorY + Math.sin(ang) * (mRadius * 0.5);
+            if (q === 0) hudCtx.moveTo(px, py);
+            else hudCtx.lineTo(px, py);
+          }
+          hudCtx.stroke();
+
+          // Raining Golden Sparks
+          for (let s = 0; s < 4; s++) {
+            const sAng = Math.random() * Math.PI * 2;
+            const spX = anchorX + Math.cos(sAng) * mRadius;
+            const spY = anchorY + Math.sin(sAng) * mRadius + Math.random() * 25;
+            hudCtx.fillStyle = '#fde047';
+            hudCtx.fillRect(spX, spY, 2, 2);
+          }
+
+          applyPhotometricLight(anchorX, anchorY, 210 * sRatio, '245, 158, 11', 0.95);
+        }
+
+        // 5. SENAPATHY VARMA KALAI LETHAL STRIKE (Indian 2 Pressure Point)
+        else if (currentSpell === 'VARMA_KALAI') {
+          const tipPt = (hData.detected && hData.points && hData.points[8]) ? hData.points[8] : { x: anchorX, y: anchorY - 45 };
+
+          // Piercing Crimson Laser Needle
+          hudCtx.strokeStyle = 'rgba(239, 68, 68, 0.95)';
+          hudCtx.lineWidth = 3.5;
+          hudCtx.shadowColor = '#dc2626';
+          hudCtx.shadowBlur = 18;
+          hudCtx.beginPath();
+          hudCtx.moveTo(anchorX, anchorY);
+          hudCtx.lineTo(tipPt.x + (tipPt.x - anchorX) * 1.8, tipPt.y + (tipPt.y - anchorY) * 1.8);
+          hudCtx.stroke();
+
+          // White Core Laser Filament
+          hudCtx.strokeStyle = '#ffffff';
+          hudCtx.lineWidth = 1.5;
+          hudCtx.beginPath();
+          hudCtx.moveTo(anchorX, anchorY);
+          hudCtx.lineTo(tipPt.x + (tipPt.x - anchorX) * 1.8, tipPt.y + (tipPt.y - anchorY) * 1.8);
+          hudCtx.stroke();
+
+          // Tamil Varma Reticle
+          hudCtx.font = 'bold 11px monospace';
+          hudCtx.fillStyle = '#ef4444';
+          hudCtx.fillText(`[வர்மக்கலை // VARMA KALAI: 100% LETHAL]`, tipPt.x - 110, tipPt.y - 18);
+
+          // Crimson Pulse Ring
+          const pulseR = ((timeVal * 120) % 40) + 10;
+          hudCtx.beginPath();
+          hudCtx.arc(tipPt.x, tipPt.y, pulseR, 0, Math.PI * 2);
+          hudCtx.stroke();
+
+          applyPhotometricLight(tipPt.x, tipPt.y, 200 * sRatio, '239, 68, 68', 0.98);
+          playVarmaAudio();
+        }
+
+        // Floating Sci-Fi Reticle above Wrist
+        hudCtx.font = 'bold 10px monospace';
+        hudCtx.fillStyle = '#ffffff';
+        hudCtx.shadowColor = '#000';
+        hudCtx.shadowBlur = 6;
+        hudCtx.fillText(`[${item.side}: ${currentSpell}]`, anchorX - 35, anchorY - 55);
+
+        hudCtx.restore();
+      });
+
+      // Update Top Gesture HUD Badge
+      const gestureBadge = document.getElementById('btnActiveGesture');
+      if (gestureBadge) {
+        if (isJawRoar || globalOverrideAura) {
+          gestureBadge.innerText = `🔥 GESTURE: SUPER SAIYAN ROAR [J]`;
+          gestureBadge.style.background = 'rgba(245, 158, 11, 0.45)';
+          gestureBadge.style.borderColor = '#f59e0b';
+          gestureBadge.style.color = '#fde047';
+        } else if (currentSpellTags.length > 0) {
+          gestureBadge.innerText = `🥋 GESTURE: ${currentSpellTags.join(' | ')} [J]`;
+          gestureBadge.style.background = 'rgba(234, 88, 12, 0.45)';
+          gestureBadge.style.borderColor = '#ea580c';
+          gestureBadge.style.color = '#fff';
+        } else {
+          gestureBadge.innerText = `🥋 GESTURE: READY [J]`;
+          gestureBadge.style.background = 'rgba(234, 88, 12, 0.25)';
+          gestureBadge.style.borderColor = 'rgba(234, 88, 12, 0.85)';
+          gestureBadge.style.color = '#fb923c';
+        }
+      }
+
+      // -----------------------------------------------------------------------
       // C. DOCTOR STRANGE (COUNTER-ROTATING ELDRITCH MANDALAS)
       // -----------------------------------------------------------------------
       if (activeStance.includes("DOCTOR_STRANGE") || isOverdrive) {
@@ -4687,6 +5275,7 @@
         targetHand.gesture = gest.name;
         targetHand.gestureCode = gest.code;
         targetHand.fistRatio = gest.ratio;
+        targetHand.vfxSpell = gest.spell || 'NONE';
       });
 
       if (!foundL) handJointsL.detected = false;
@@ -5322,7 +5911,9 @@
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'r' || e.key === 'R') {
+      if (e.key === 'j' || e.key === 'J') {
+        toggleGestureSpellbook();
+      } else if (e.key === 'r' || e.key === 'R') {
         if (isReplayModalOpen) closeReplayScreeningRoom();
         else openReplayScreeningRoom();
       } else if (e.key === 'b' || e.key === 'B') {
@@ -5384,6 +5975,109 @@
       btnToggleHudEl.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleHud();
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // MASTER GESTURE SPELLBOOK CONTROLLER & INTERACTIVE DOCK LISTENERS
+    // -------------------------------------------------------------------------
+    function toggleGestureSpellbook(force) {
+      const modal = document.getElementById('gestureModal');
+      if (!modal) return;
+      isGestureModalOpen = (force !== undefined) ? force : !isGestureModalOpen;
+      modal.style.display = isGestureModalOpen ? 'flex' : 'none';
+      if (isGestureModalOpen) {
+        showQiToast("🥋 Master Gesture Spellbook Opened! Press [J] or [ESC] to return.");
+      }
+    }
+
+    const btnActiveGesture = document.getElementById('btnActiveGesture');
+    if (btnActiveGesture) btnActiveGesture.addEventListener('click', () => toggleGestureSpellbook(true));
+
+    const btnGestureClose = document.getElementById('btnGestureClose');
+    if (btnGestureClose) btnGestureClose.addEventListener('click', () => toggleGestureSpellbook(false));
+
+    const btnGestureDismiss = document.getElementById('btnGestureDismiss');
+    if (btnGestureDismiss) btnGestureDismiss.addEventListener('click', () => toggleGestureSpellbook(false));
+
+    // Test Spell Buttons inside Modal
+    document.querySelectorAll('.btn-test-spell').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        initAudio();
+        const spell = btn.getAttribute('data-spell');
+        if (spell === 'ROAR_AURA') {
+          globalOverrideAura = !globalOverrideAura;
+          showQiToast(globalOverrideAura ? "🔥 Super Saiyan Battle Roar Activated!" : "🔥 Aura Deactivated");
+        } else if (spell === 'KAMEHAMEHA') {
+          kamehamehaState.firing = true;
+          kamehamehaState.fireTimer = 45;
+          playBlastAudio();
+          showQiToast("⚡ Cosmic Kamehameha Beam Detonated!");
+        } else if (spell === 'MANDALA_SHIELD') {
+          ringsState.toggleMandalaShield();
+        } else {
+          // Toggle spell override on right hand (or left if right busy)
+          if (handJointsR.overrideSpell === spell) {
+            handJointsR.overrideSpell = null;
+            handJointsL.overrideSpell = null;
+            showQiToast(`🥋 ${spell} Cleared`);
+          } else {
+            handJointsR.overrideSpell = spell;
+            handJointsR.spellRatio = 1.0;
+            showQiToast(`⚡ ${spell} Active on Right Hand!`);
+          }
+        }
+      });
+    });
+
+    // Dock Pills for Quick Testing
+    const btnPillRasengan = document.getElementById('btnPillRasengan');
+    if (btnPillRasengan) {
+      btnPillRasengan.addEventListener('click', () => {
+        initAudio();
+        handJointsR.overrideSpell = (handJointsR.overrideSpell === 'RASENGAN') ? null : 'RASENGAN';
+        handJointsR.spellRatio = handJointsR.overrideSpell ? 1.0 : 0.0;
+        showQiToast(handJointsR.overrideSpell ? "🌀 Rasengan Vortex Locked to Right Hand!" : "🌀 Rasengan Released");
+      });
+    }
+
+    const btnPillChidori = document.getElementById('btnPillChidori');
+    if (btnPillChidori) {
+      btnPillChidori.addEventListener('click', () => {
+        initAudio();
+        handJointsR.overrideSpell = (handJointsR.overrideSpell === 'CHIDORI') ? null : 'CHIDORI';
+        handJointsR.spellRatio = handJointsR.overrideSpell ? 1.0 : 0.0;
+        showQiToast(handJointsR.overrideSpell ? "⚡ Chidori Lightning Blade Locked to Right Hand!" : "⚡ Chidori Released");
+      });
+    }
+
+    const btnPillRepulsor = document.getElementById('btnPillRepulsor');
+    if (btnPillRepulsor) {
+      btnPillRepulsor.addEventListener('click', () => {
+        initAudio();
+        handJointsR.overrideSpell = (handJointsR.overrideSpell === 'REPULSOR') ? null : 'REPULSOR';
+        handJointsR.spellRatio = handJointsR.overrideSpell ? 1.0 : 0.0;
+        showQiToast(handJointsR.overrideSpell ? "💥 Mark 85 Repulsor Beam Flare Locked!" : "💥 Repulsor Released");
+      });
+    }
+
+    const btnPillVarma = document.getElementById('btnPillVarma');
+    if (btnPillVarma) {
+      btnPillVarma.addEventListener('click', () => {
+        initAudio();
+        handJointsR.overrideSpell = (handJointsR.overrideSpell === 'VARMA_KALAI') ? null : 'VARMA_KALAI';
+        handJointsR.spellRatio = handJointsR.overrideSpell ? 1.0 : 0.0;
+        showQiToast(handJointsR.overrideSpell ? "🩸 Indian 2 Senapathy Varma Kalai Locked!" : "🩸 Varma Kalai Released");
+      });
+    }
+
+    const btnPillAuraRoar = document.getElementById('btnPillAuraRoar');
+    if (btnPillAuraRoar) {
+      btnPillAuraRoar.addEventListener('click', () => {
+        initAudio();
+        globalOverrideAura = !globalOverrideAura;
+        showQiToast(globalOverrideAura ? "🔥 Super Saiyan Ki Flame Aura Surging!" : "🔥 Aura Returned to Rest");
       });
     }
 
