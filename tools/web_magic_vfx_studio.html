@@ -4770,7 +4770,7 @@
     // (Zero External Textures, Zero Audio Files, 100% Procedural Physics & Audio)
     // =========================================================================
     const proceduralFireEngine = {
-      active: true,
+      active: false,
       lastSimTime: 0,
       sparks: [],
       maxSparks: 120,
@@ -4899,6 +4899,8 @@
 
       // 5. Render Volumetric Procedural Flame Plume on Canvas
       renderPlume(ctx, cx, cy, radius, height, time, intensity = 1.0) {
+        // Flat 2D canvas circle plumes disabled: Leonxlnx 3D volumetric fire active
+        return;
         if (intensity <= 0.02) return;
         ctx.save();
 
