@@ -286,6 +286,18 @@ class NativeCharacterMoCapStudio:
         sheet_path = r"C:\Users\SVNITHESHPC\.gemini\antigravity\brain\972199e1-0395-45a5-b415-be1edfa58c26\character_asset_kit_showcase_houshu.png"
         if os.path.exists(sheet_path):
             self.sheet_img = cv2.imread(sheet_path)
+
+        # Load Hou Shu Photorealistic Action & Turnaround Sprites
+        self.houshu_sprites = {}
+        sprites_dir = r"C:\Users\SVNITHESHPC\Downloads\AI_VFX_Realtime_Suite\assets\houshu_cutouts"
+        if os.path.exists(sprites_dir):
+            for fname in os.listdir(sprites_dir):
+                if fname.endswith(".png"):
+                    key = fname[:-4]
+                    sp = cv2.imread(os.path.join(sprites_dir, fname), cv2.IMREAD_UNCHANGED)
+                    if sp is not None:
+                        self.houshu_sprites[key] = sp
+        print(f"[*] Loaded {len(self.houshu_sprites)} photorealistic Hou Shu sprites from character-asset-kit.")
         self.recorded_frames = []
 
         # Kinetic / Stance Detection
@@ -551,8 +563,159 @@ class NativeCharacterMoCapStudio:
         else: # VOID
             return np.zeros((720, 640, 3), dtype=np.uint8)
 
+    def overlay_sprite(self, canvas, sprite_rgba, center_x, bottom_y, target_height):
+        # Alpha-blends a photorealistic RGBA sprite onto the stage canvas with contact shadow
+        if sprite_rgba is None:
+            return
+        sh, sw = sprite_rgba.shape[:2]
+        aspect = sw / max(1, sh)
+        target_width = int(target_height * aspect)
+
+        resized = cv2.resize(sprite_rgba, (target_width, target_height), interpolation=cv2.INTER_AREA)
+
+        x1 = center_x - target_width // 2
+        x2 = x1 + target_width
+        y2 = bottom_y
+        y1 = y2 - target_height
+
+        ch, cw = canvas.shape[:2]
+        src_x1 = max(0, -x1)
+        src_y1 = max(0, -y1)
+        src_x2 = target_width - max(0, x2 - cw)
+        src_y2 = target_height - max(0, y2 - ch)
+
+        dst_x1 = max(0, x1)
+        dst_y1 = max(0, y1)
+        dst_x2 = min(cw, x2)
+        dst_y2 = min(ch, y2)
+
+        if dst_x2 <= dst_x1 or dst_y2 <= dst_y1:
+            return
+
+        crop_sprite = resized[src_y1:src_y2, src_x1:src_x2]
+        rgb = crop_sprite[:, :, :3]
+        alpha = (crop_sprite[:, :, 3].astype(np.float32) / 255.0)[:, :, np.newaxis]
+
+        # Ground contact shadow
+        shadow_w = int(target_width * 0.70)
+        shadow_h = int(target_height * 0.045)
+        shadow_center = (center_x, bottom_y - 6)
+        cv2.ellipse(canvas, shadow_center, (max(1, shadow_w // 2), max(1, shadow_h // 2)), 
+                    0, 0, 360, (20, 22, 28), -1, cv2.LINE_AA)
+
+        canvas_roi = canvas[dst_y1:dst_y2, dst_x1:dst_x2]
+        canvas[dst_y1:dst_y2, dst_x1:dst_x2] = (rgb * alpha + canvas_roi * (1.0 - alpha)).astype(np.uint8)
+
+    def render_houshu_kinematic(self, canvas, joints, t_curr):
+        # Kinematically maps 33 MediaPipe joints to Hou Shu photorealistic poses from character-asset-kit
+        if not self.houshu_sprites:
+            return
+
+        nose = joints[0]
+        sh_l, sh_r = joints[11], joints[12]
+        el_l, el_r = joints[13], joints[14]
+        wr_l, wr_r = joints[15], joints[16]
+        hip_l, hip_r = joints[23], joints[24]
+        kn_l, kn_r = joints[25], joints[26]
+        ank_l, ank_r = joints[27], joints[28]
+
+        mid_sh = (sh_l + sh_r) * 0.5
+        mid_hip = (hip_l + hip_r) * 0.5
+
+        # Compute Body Yaw Angle
+        dx_sh = sh_r[0] - sh_l[0]
+        dz_sh = sh_r[2] - sh_l[2]
+        yaw_deg = math.degrees(math.atan2(dz_sh, dx_sh))
+
+        # Project 3D Screen Center
+        pt_hip = self.cam3d.project(mid_hip)
+        pt_sh = self.cam3d.project(mid_sh)
+        pt_ank = self.cam3d.project((ank_l + ank_r) * 0.5)
+
+        center_x = pt_hip[0]
+        bottom_y = max(pt_ank[1] + 20, int(canvas.shape[0] * 0.92))
+        fig_height = max(260, min(680, int((bottom_y - pt_sh[1]) * 1.55)))
+
+        # Gesture Detection for Action Poses:
+        selected_key = "master_standing"
+
+        # 1. Waving Pose (A1): Right hand raised high above shoulder
+        if wr_r[1] < sh_r[1] - 0.08:
+            selected_key = "pose_a1_wave"
+        # 2. Greeting / Polite Bow (A2): Hands clasped together near chest
+        elif np.linalg.norm(wr_l - wr_r) < 0.22 and wr_l[1] > mid_sh[1] and wr_l[1] < mid_hip[1]:
+            selected_key = "pose_a2_greet"
+        # 3. Open Palms (A3): Both arms outstretched wide laterally
+        elif wr_l[0] < el_l[0] - 0.08 and wr_r[0] > el_r[0] + 0.08:
+            selected_key = "pose_a3_open_palms"
+        # 4. Crossed Arms (A4): Forearms crossed across torso
+        elif wr_l[0] > mid_sh[0] and wr_r[0] < mid_sh[0]:
+            selected_key = "pose_a4_crossed_arms"
+        # 5. Chin Resting (A5): Hand touching jaw / chin
+        elif np.linalg.norm(wr_r - nose) < 0.20 or np.linalg.norm(wr_l - nose) < 0.20:
+            selected_key = "pose_a5_chin_rest"
+        # 6. Holding Fan Prop: Hands cupped / fanning gesture
+        elif self.cupped_hands:
+            selected_key = "pose_prop_fan"
+        # 7. Holding Book Prop: Left hand raised holding reading pose
+        elif wr_l[1] < mid_sh[1] + 0.05 and wr_r[1] > mid_sh[1] + 0.15:
+            selected_key = "pose_prop_book"
+        # 8. Holding Brush Prop: Right hand pointing / writing
+        elif wr_r[1] < mid_sh[1] + 0.05 and wr_l[1] > mid_sh[1] + 0.15:
+            selected_key = "pose_prop_brush"
+        # 9. Stride / Walking (B1): Knees moving or high speed
+        elif max(self.punch_speed_l, self.punch_speed_r) > 2.8:
+            selected_key = "pose_b1_walk"
+        # 10. Multi-View Turnaround Angles (when standing naturally)
+        else:
+            if abs(yaw_deg) < 22.0:
+                selected_key = "turn_front"
+            elif abs(yaw_deg) < 65.0:
+                selected_key = "turn_front_quarter"
+            elif abs(yaw_deg) < 118.0:
+                selected_key = "turn_profile"
+            elif abs(yaw_deg) < 155.0:
+                selected_key = "turn_back_quarter"
+            else:
+                selected_key = "turn_back"
+
+        # If Turntable active, force turntable turnaround angle
+        if self.turntable_angle != 0.0:
+            tt_deg = math.degrees(self.turntable_angle) % 360
+            if tt_deg < 45 or tt_deg >= 315:
+                selected_key = "turn_front"
+            elif tt_deg < 90:
+                selected_key = "turn_front_quarter"
+            elif tt_deg < 180:
+                selected_key = "turn_profile"
+            elif tt_deg < 270:
+                selected_key = "turn_back_quarter"
+            else:
+                selected_key = "turn_back"
+
+        # Draw Hou Shu Sprite
+        sprite = self.houshu_sprites.get(selected_key)
+        if sprite is None:
+            sprite = self.houshu_sprites.get("master_standing")
+        if sprite is not None:
+            self.overlay_sprite(canvas, sprite, center_x, bottom_y, fig_height)
+
+        # Pose Badge Telemetry
+        pose_label = selected_key.upper().replace("_", " ")
+        cv2.rectangle(canvas, (center_x - 130, bottom_y - fig_height - 35), 
+                      (center_x + 130, bottom_y - fig_height - 8), (15, 18, 24), -1)
+        cv2.rectangle(canvas, (center_x - 130, bottom_y - fig_height - 35), 
+                      (center_x + 130, bottom_y - fig_height - 8), (0, 240, 255), 1)
+        cv2.putText(canvas, f"POSE: {pose_label}", (center_x - 118, bottom_y - fig_height - 15), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.48, (0, 240, 255), 1, cv2.LINE_AA)
+
     def render_character(self, canvas, joints, t_curr):
         """Renders 3D Character Rig with full volumetric anatomy, clothing, and anime hair"""
+        if self.char_idx == 1 and self.houshu_sprites:
+            # Render Photorealistic Hou Shu from character-asset-kit
+            self.render_houshu_kinematic(canvas, joints, t_curr)
+            return
+
         # Apply Turntable Rotation if active
         if self.turntable_angle != 0.0:
             center = (joints[23] + joints[24]) * 0.5
