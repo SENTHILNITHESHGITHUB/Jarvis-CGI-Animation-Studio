@@ -276,6 +276,7 @@
       <div class="badge badge-interactive" id="btnLoadReplay" style="background:rgba(99, 102, 241, 0.25); border-color:rgba(99, 102, 241, 0.85); color:#c7d2fe; font-weight:800;" title="Load Replay Video from Phone / Cam / Fan File">📂 LOAD REPLAY</div>
       <div class="badge badge-interactive" id="btnFanFilter" style="background:rgba(14, 165, 233, 0.2); border-color:rgba(14, 165, 233, 0.7); color:#38bdf8; font-weight:800;" title="OmniRoute Rotary & Ceiling Fan Noise Filter">🌀 FAN: CLEAN</div>
       <div class="badge badge-interactive" id="btnActiveGesture" style="background:rgba(234, 88, 12, 0.25); border-color:rgba(234, 88, 12, 0.85); color:#fb923c; font-weight:800;" title="Live Recognized Hand & Body Gesture VFX Status (Hotkey [J] for Spellbook)">🥋 GESTURE: READY [J]</div>
+      <div class="badge badge-interactive" id="btnProcFireBadge" style="background:rgba(234, 88, 12, 0.25); border-color:rgba(234, 88, 12, 0.85); color:#fdba74; font-weight:800;" title="Leonxlnx Physically-Based Procedural Fire & Planck Blackbody Radiation (Hotkey [Y])">🔥 FIRE: PLANCK BLACKBODY [Y]</div>
       <div class="badge" id="hudSpeed">SPEED: 0 PX/S</div>
       <div class="badge" id="hudStance">BRAHMĀSTRA AGNYĀSTRA</div>
       <div class="badge" id="hudFps">FPS: 60</div>
@@ -553,6 +554,19 @@
           <button class="btn-test-spell" data-spell="MANDALA_SHIELD" style="margin-top:auto; background:rgba(234, 88, 12, 0.2); border:1px solid #ea580c; color:#fff7ed; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">⚡ TOGGLE SHIELD (X)</button>
         </div>
 
+        <!-- Spell Card 9: Leonxlnx Physically-Based Procedural Fire -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(249, 115, 22, 0.5); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:22px;">🔥</span>
+            <span style="background:rgba(249, 115, 22, 0.2); border:1px solid #f97316; color:#fdba74; font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px;">PHYSICALLY-BASED</span>
+          </div>
+          <div style="font-size:15px; font-weight:900; color:#fff;">PLANCK PROCEDURAL FIRE</div>
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            <strong style="color:#fdba74;">Physics Engine:</strong> Planck blackbody radiation (800K–3200K), chemiluminescent blue flame roots, curl-noise convection, and procedural resin crackle SFX! (Hotkey [Y])
+          </div>
+          <button class="btn-test-spell" data-spell="PROC_FIRE" style="margin-top:auto; background:linear-gradient(135deg, rgba(234, 88, 12, 0.35), rgba(245, 158, 11, 0.35)); border:1px solid #f97316; color:#ffedd5; font-size:11px; font-weight:800; padding:8px 0; border-radius:8px; cursor:pointer;">🔥 TOGGLE PROCEDURAL FIRE (Y)</button>
+        </div>
+
       </div>
 
       <!-- Footer Note -->
@@ -582,6 +596,7 @@
     <button class="dock-pill" id="btnPillRepulsor" style="border-color:#38bdf8; color:#38bdf8;" title="Iron Man Mark 85 Repulsor Beam">💥 REPULSOR</button>
     <button class="dock-pill" id="btnPillVarma" style="border-color:#ef4444; color:#f87171;" title="Indian 2 Senapathy Varma Kalai Lethal Strike">🩸 VARMA KALAI</button>
     <button class="dock-pill" id="btnPillAuraRoar" style="border-color:#f59e0b; color:#fde047;" title="Super Saiyan Ki Aura Burst & Battle Roar">🔥 ROAR AURA</button>
+    <button class="dock-pill pill-fire" id="btnPillProcFire" style="border-color:#f97316; color:#fdba74; font-weight:800;" title="Leonxlnx Physically-Based Procedural Fire & Planck Blackbody Radiation (Hotkey [Y])">🔥 PROCEDURAL FIRE (Y)</button>
     <button class="dock-pill" data-vfx="AUTO">✨ AUTO AI</button>
   </div>
   </div>
@@ -4577,6 +4592,11 @@
       // Update Procedural Audio Modulation
       updateAudioSFX();
 
+      // Leonxlnx Physically-Based Procedural Fire & Planck Blackbody Simulation
+      if (typeof proceduralFireEngine !== 'undefined') {
+        proceduralFireEngine.render(hudCtx, lightCtx, poseCurrent, handJointsL, handJointsR, timeVal);
+      }
+
       // Handle 3D Prop Inspector Rendering
       if (isPropInspectActive) {
         inspectRingGroup.visible = true;
@@ -4744,6 +4764,265 @@
 
     // Launch 60 FPS Render Loop immediately
     requestAnimationFrame(renderLoop);
+
+    // =========================================================================
+    // LEONXLNX PHYSICALLY-BASED PROCEDURAL FIRE & PLANCK BLACKBODY ENGINE
+    // (Zero External Textures, Zero Audio Files, 100% Procedural Physics & Audio)
+    // =========================================================================
+    const proceduralFireEngine = {
+      active: true,
+      lastSimTime: 0,
+      sparks: [],
+      maxSparks: 120,
+      cracklesTimer: 0,
+      roarGainNode: null,
+      crackleBuffer: null,
+
+      // 1. Planck Blackbody Radiation Color Model (800K - 3200K)
+      // Derives true linear sRGB radiance from thermodynamic temperature in Kelvin
+      blackbody(tempK) {
+        const t = Math.max(800, Math.min(3500, tempK));
+        let r = 0, g = 0, b = 0;
+
+        // Red channel
+        if (t <= 6600) {
+          r = 255;
+        } else {
+          const x = (t / 100) - 60;
+          r = 329.698727446 * Math.pow(x, -0.1332047592);
+        }
+
+        // Green channel
+        if (t <= 6600) {
+          const x = t / 100;
+          g = 99.4708025861 * Math.log(x) - 161.1195681661;
+        } else {
+          const x = (t / 100) - 60;
+          g = 288.1221695283 * Math.pow(x, -0.0755148492);
+        }
+
+        // Blue channel (Includes chemiluminescent flame root emission)
+        if (t >= 2100) {
+          if (t >= 6600) {
+            b = 255;
+          } else {
+            const x = (t / 100) - 10;
+            b = 138.5177312231 * Math.log(x) - 305.0447927307;
+          }
+        } else if (t >= 1800 && t < 2100) {
+          // Chemiluminescent blue flame base (CH* / C2* radical emission)
+          b = Math.min(220, (2100 - t) * 0.45);
+        } else {
+          b = 0;
+        }
+
+        r = Math.max(0, Math.min(255, Math.round(r)));
+        g = Math.max(0, Math.min(255, Math.round(g)));
+        b = Math.max(0, Math.min(255, Math.round(b)));
+
+        return {
+          r, g, b,
+          rgb: `rgb(${r}, ${g}, ${b})`,
+          rgba: (alpha) => `rgba(${r}, ${g}, ${b}, ${alpha})`
+        };
+      },
+
+      // 2. 2D/3D Fast Curl-Noise Turbulence Field
+      // Generates divergence-free convective vortices lifting flame tongues
+      curlNoise(x, y, time) {
+        const freq = 0.018;
+        const speed = time * 3.5;
+        const eps = 1.0;
+
+        const n1 = Math.sin((x + eps) * freq + speed) * Math.cos(y * freq * 0.8 + speed * 1.2);
+        const n2 = Math.sin((x - eps) * freq + speed) * Math.cos(y * freq * 0.8 + speed * 1.2);
+        const dFdy = (n1 - n2) / (2.0 * eps);
+
+        const n3 = Math.sin(x * freq + speed) * Math.cos((y + eps) * freq * 0.8 + speed * 1.2);
+        const n4 = Math.sin(x * freq + speed) * Math.cos((y - eps) * freq * 0.8 + speed * 1.2);
+        const dFdx = (n3 - n4) / (2.0 * eps);
+
+        // Curl operator: (dF/dy, -dF/dx) + McCaffrey upward buoyancy (-1.8)
+        return {
+          vx: dFdy * 45.0,
+          vy: -dFdx * 35.0 - 55.0
+        };
+      },
+
+      // 3. Physically-Based Spark & Ember Particle Emitter
+      emitSpark(x, y, baseTemp = 2400) {
+        if (this.sparks.length >= this.maxSparks) this.sparks.shift();
+        const angle = -Math.PI * 0.5 + (Math.random() - 0.5) * 1.4;
+        const speed = 60 + Math.random() * 140;
+        this.sparks.push({
+          x: x + (Math.random() - 0.5) * 30,
+          y: y + (Math.random() - 0.5) * 15,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          temp: baseTemp,
+          coolRate: 800 + Math.random() * 600, // Kelvin per second
+          life: 1.0,
+          maxLife: 0.8 + Math.random() * 1.2,
+          radius: 1.5 + Math.random() * 2.5
+        });
+      },
+
+      // 4. Procedural Crackles, Resin Pops & Combustion Roar Audio Synthesizer
+      triggerCrackleAudio(intensity = 1.0) {
+        if (!audioCtx || !soundEnabled || audioCtx.state !== 'running') return;
+        try {
+          const now = audioCtx.currentTime;
+          // Sharp wood/resin thermal micro-pop
+          const popOsc = audioCtx.createOscillator();
+          const popGain = audioCtx.createGain();
+          const popFilter = audioCtx.createBiquadFilter();
+
+          popOsc.type = 'triangle';
+          popOsc.frequency.setValueAtTime(2200 + Math.random() * 1800, now);
+          popOsc.frequency.exponentialRampToValueAtTime(120, now + 0.045);
+
+          popFilter.type = 'bandpass';
+          popFilter.frequency.setValueAtTime(1800 + Math.random() * 1200, now);
+          popFilter.Q.setValueAtTime(4.5, now);
+
+          popGain.gain.setValueAtTime(0.28 * intensity, now);
+          popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+          popOsc.connect(popFilter);
+          popFilter.connect(popGain);
+          popGain.connect(audioCtx.destination);
+
+          popOsc.start(now);
+          popOsc.stop(now + 0.05);
+        } catch(e) {}
+      },
+
+      // 5. Render Volumetric Procedural Flame Plume on Canvas
+      renderPlume(ctx, cx, cy, radius, height, time, intensity = 1.0) {
+        if (intensity <= 0.02) return;
+        ctx.save();
+
+        const numLayers = 14;
+        const tBase = 2600; // Blue root / white hot core base
+        const tTip = 950;   // Soot / cooling smoke tip
+
+        for (let i = 0; i < numLayers; i++) {
+          const u = i / numLayers;
+          const curTemp = tBase * (1.0 - u) + tTip * u;
+          const bbColor = this.blackbody(curTemp);
+
+          const curl = this.curlNoise(cx + i * 15, cy - u * height, time + i * 0.12);
+          const px = cx + (curl.vx * 0.35) * u * intensity;
+          const py = cy - (u * height * intensity) + (curl.vy * 0.15);
+          const curRadius = radius * (1.0 - u * 0.75) * (1.0 + 0.25 * Math.sin(time * 14 + i * 0.9));
+
+          const grad = ctx.createRadialGradient(px, py, 1, px, py, Math.max(2, curRadius));
+          if (u < 0.15) {
+            // Blue chemiluminescent flame root
+            grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.95)');
+            grad.addColorStop(0.35, 'rgba(56, 189, 248, 0.85)');
+            grad.addColorStop(0.85, 'rgba(29, 78, 216, 0.45)');
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+          } else if (u < 0.45) {
+            // White-hot combustion core
+            grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.98)');
+            grad.addColorStop(0.40, bbColor.rgba(0.90));
+            grad.addColorStop(0.90, 'rgba(245, 158, 11, 0.45)');
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+          } else if (u < 0.80) {
+            // Bright golden flame body & amber tongues
+            grad.addColorStop(0.0, bbColor.rgba(0.92));
+            grad.addColorStop(0.60, 'rgba(234, 88, 12, 0.65)');
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+          } else {
+            // Cooling crimson soot & smoke edges
+            grad.addColorStop(0.0, 'rgba(220, 38, 38, 0.55)');
+            grad.addColorStop(0.70, 'rgba(153, 27, 27, 0.25)');
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+          }
+
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(px, py, Math.max(2, curRadius), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Randomly emit buoyant sparks from base
+        if (Math.random() < 0.35 * intensity) {
+          this.emitSpark(cx, cy - 10, tBase);
+          if (Math.random() < 0.20) this.triggerCrackleAudio(intensity);
+        }
+
+        ctx.restore();
+      },
+
+      // 6. Master Render Routine for Arms, Palms, and Chest
+      render(hudCtx, lightCtx, pose, handL, handR, time) {
+        if (!this.active) return;
+
+        const isFireEnabled = (
+          this.active ||
+          activeStance.includes("BRAHMASTRA") ||
+          ringsState.mode === 'SHANG_CHI_GOLD' ||
+          globalOverrideAura
+        );
+
+        if (!isFireEnabled) return;
+
+        const dt = 0.016;
+
+        // Render Procedural Fire on Left & Right Palms
+        const targets = [
+          { hand: handL, wrist: pose.lw, side: 'L' },
+          { hand: handR, wrist: pose.rw, side: 'R' }
+        ];
+
+        targets.forEach(target => {
+          let fx = target.wrist.x;
+          let fy = target.wrist.y;
+          if (target.hand && target.hand.detected && target.hand.points && target.hand.points.length >= 21) {
+            fx = (target.hand.points[0].x + target.hand.points[9].x) * 0.5;
+            fy = (target.hand.points[0].y + target.hand.points[9].y) * 0.5;
+          }
+
+          const speed = (target.side === 'L') ? speedL : speedR;
+          const thrustBoost = Math.min(1.8, 1.0 + speed * 0.0015);
+
+          // Render Leonxlnx Planck flame plume
+          this.renderPlume(hudCtx, fx, fy, 32 * thrustBoost, 140 * thrustBoost, time, 1.0);
+          applyPhotometricLight(fx, fy, 240 * thrustBoost, '245, 158, 11', 0.95);
+        });
+
+        // Update and Render Buoyant Sparks with Planck cooling & motion blur
+        hudCtx.save();
+        for (let i = this.sparks.length - 1; i >= 0; i--) {
+          const s = this.sparks[i];
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.vy -= 45.0 * dt; // Upward thermal buoyancy
+          s.temp -= s.coolRate * dt;
+          s.life -= dt / s.maxLife;
+
+          if (s.life <= 0 || s.temp < 700) {
+            this.sparks.splice(i, 1);
+            continue;
+          }
+
+          const sparkColor = this.blackbody(s.temp);
+          hudCtx.strokeStyle = sparkColor.rgba(Math.min(1.0, s.life * 1.5));
+          hudCtx.lineWidth = s.radius;
+          hudCtx.shadowColor = '#f59e0b';
+          hudCtx.shadowBlur = 8;
+
+          // Motion-blurred streak oriented along velocity vector
+          hudCtx.beginPath();
+          hudCtx.moveTo(s.x, s.y);
+          hudCtx.lineTo(s.x - s.vx * 0.035, s.y - s.vy * 0.035);
+          hudCtx.stroke();
+        }
+        hudCtx.restore();
+      }
+    };
 
     // -------------------------------------------------------------------------
     // 10. PROCEDURAL CINEMA AUDIO SYNTHESIZER (WEB AUDIO API)
@@ -5911,7 +6190,9 @@
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'j' || e.key === 'J') {
+      if (e.key === 'y' || e.key === 'Y') {
+        toggleProceduralFire();
+      } else if (e.key === 'j' || e.key === 'J') {
         toggleGestureSpellbook();
       } else if (e.key === 'r' || e.key === 'R') {
         if (isReplayModalOpen) closeReplayScreeningRoom();
@@ -6080,6 +6361,49 @@
         showQiToast(globalOverrideAura ? "🔥 Super Saiyan Ki Flame Aura Surging!" : "🔥 Aura Returned to Rest");
       });
     }
+
+    // -------------------------------------------------------------------------
+    // PROCEDURAL FIRE CONTROLLER & INTERACTIVE BUTTONS
+    // -------------------------------------------------------------------------
+    function toggleProceduralFire(force) {
+      if (typeof proceduralFireEngine === 'undefined') return;
+      proceduralFireEngine.active = (force !== undefined) ? force : !proceduralFireEngine.active;
+      
+      const badge = document.getElementById('btnProcFireBadge');
+      if (badge) {
+        badge.innerText = proceduralFireEngine.active ? "🔥 FIRE: PLANCK BLACKBODY [Y]" : "🔥 FIRE: OFF [Y]";
+        badge.style.background = proceduralFireEngine.active ? "rgba(234, 88, 12, 0.45)" : "rgba(234, 88, 12, 0.15)";
+        badge.style.borderColor = proceduralFireEngine.active ? "#ea580c" : "rgba(234, 88, 12, 0.5)";
+        badge.style.color = proceduralFireEngine.active ? "#fed7aa" : "#fdba74";
+      }
+
+      const pill = document.getElementById('btnPillProcFire');
+      if (pill) {
+        pill.innerText = proceduralFireEngine.active ? "🔥 FIRE: ON (Y)" : "🔥 FIRE: OFF (Y)";
+        pill.style.background = proceduralFireEngine.active ? "rgba(234, 88, 12, 0.45)" : "rgba(255,255,255,0.06)";
+      }
+
+      showQiToast(proceduralFireEngine.active ? 
+        "🔥 Leonxlnx Physically-Based Procedural Fire Active (Planck Blackbody 800K-3200K)!" : 
+        "🔥 Procedural Fire Extinguished.");
+    }
+
+    const btnProcFireBadge = document.getElementById('btnProcFireBadge');
+    if (btnProcFireBadge) btnProcFireBadge.addEventListener('click', () => toggleProceduralFire());
+
+    const btnPillProcFire = document.getElementById('btnPillProcFire');
+    if (btnPillProcFire) btnPillProcFire.addEventListener('click', () => toggleProceduralFire());
+
+    // Connect Spellbook Card button
+    document.querySelectorAll('.btn-test-spell').forEach(btn => {
+      if (btn.getAttribute('data-spell') === 'PROC_FIRE') {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          initAudio();
+          toggleProceduralFire();
+        });
+      }
+    });
 
   </script>
 </body>
