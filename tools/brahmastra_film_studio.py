@@ -272,21 +272,29 @@ class BrahmastraLiveStudio:
             print(f"[*] Loaded film video file: {self.input_file}")
             return
 
-        for idx in [1, 0, 2]:
-            try:
-                cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
-                if cap.isOpened():
-                    ret, frame = cap.read()
-                    if ret and frame is not None:
+        # Connect to webcam: test indices 0 and 1 across DEFAULT, MSMF, DSHOW backends
+        for idx in [0, 1]:
+            for backend in [None, cv2.CAP_MSMF, cv2.CAP_DSHOW]:
+                try:
+                    if backend is None:
+                        cap = cv2.VideoCapture(idx)
+                    else:
+                        cap = cv2.VideoCapture(idx, backend)
+
+                    if cap.isOpened():
                         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
                         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-                        self.cap = cap
-                        self.video_source = 'WEBCAM'
-                        print(f"[*] DirectShow Camera Active: Index [{idx}]")
-                        return
-                    cap.release()
-            except Exception:
-                pass
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        ret, frame = cap.read()
+                        if ret and frame is not None:
+                            self.cap = cap
+                            self.video_source = 'WEBCAM'
+                            backend_str = "DEFAULT" if backend is None else ("MSMF" if backend == cv2.CAP_MSMF else "DSHOW")
+                            print(f"[*] Active Webcam Connected: Index [{idx}] via {backend_str} ({frame.shape[1]}x{frame.shape[0]})")
+                            return
+                        cap.release()
+                except Exception:
+                    pass
         print("[!] Camera unavailable. Using synthetic backdrop.")
 
     def run(self):
